@@ -136,8 +136,8 @@ stateDiagram-v2
 
 ### Kanban membership and position
 
-- A task's bucket is a row in `task_buckets` per view; `Task.BucketID` is filled only when reading through a view (`?expand=buckets` on v2). Moving between buckets is `PUT /projects/{p}/views/{v}/buckets/{b}/tasks` with `{"task_id": N}`, not a task update.
-- Bucket `limit` is enforced on move (`ErrCodeBucketLimitExceeded 10004`); a project needs at least one bucket (`10003`) and at most one done bucket per view (`10005`).
+- A task's bucket is a row in `task_buckets` per view; `Task.BucketID` is filled only when reading through a view, and `?expand=buckets` returns the full `buckets` array (one per view), which `BucketSelect.vue` reads. Moving between buckets is a request to `/projects/{p}/views/{v}/buckets/{b}/tasks` with `{"task_id": N}` (`PUT` on v2, `POST` on v1), not a task update.
+- Bucket `limit` is enforced on move (`ErrCodeBucketLimitExceeded 10004`); a view needs at least one bucket (`10003`). One done bucket per view is structural (`done_bucket_id` is a single column); `ErrCodeOnlyOneDoneBucketPerProject 10005` is defined but nothing constructs it.
 - Ordering is `task_positions.position` per view. Positions are floats; when they collide or exhaust precision, `RecalculateTaskPositions` rewrites the whole view (`ErrCodeNeedsFullRecalculation 4028`). Two repair CLI commands exist for drifted data.
 
 ### Sessions

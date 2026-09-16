@@ -45,5 +45,6 @@ Every `Can*` method needs both positive and negative coverage. Run with `mage te
 ## Related
 
 - Generic CRUD handler: `pkg/web/handler/`
-- Permission type definitions: `pkg/web/auth.go`, `pkg/models/permissions.go`
-- After the model is stable, register the routes in `pkg/routes/api/v1/` and add Swagger annotations. Do not edit `pkg/swagger/` directly — it's generated.
+- Permission type definitions: `pkg/web/web.go` (`Permissions`, `Auth` interfaces), `pkg/models/permissions.go`
+- After the model is stable, register routes on `/api/v2` with the `api-v2-routes` skill. `/api/v1` is frozen; only touch it to fix a bug, keeping its Swagger annotations accurate. Do not edit `pkg/swagger/` directly — it's generated.
+- Wiki: `.agents/wiki/components/backend/crud-framework.md` explains the `Do*` pipeline and session semantics.

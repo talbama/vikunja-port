@@ -93,7 +93,7 @@ Always pass `reason`; it becomes a comment. Batch ~30 `update_issue` calls per m
 
 ## 6. Cleanup
 
-After PRs merge: `bash ~/.claude/skills/cleanup-worktrees/cleanup-worktrees.sh`. It only removes worktrees whose PR is merged and whose tree is clean. If it exits 141 with no output (broken pipe, seen once), remove by hand:
+After PRs merge: `bash ~/.claude/skills/cleanup-worktrees/cleanup-worktrees.sh` if that personal script exists on your machine (it is **not** part of this repository, and neither is the `open-pr` skill referenced above; on a machine without them, open PRs with `gh pr create` and clean up by hand). It only removes worktrees whose PR is merged and whose tree is clean. If it exits 141 with no output (broken pipe, seen once), remove by hand:
 
 ```bash
 git -C ../<wt> status --porcelain   # must be empty

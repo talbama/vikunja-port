@@ -25,4 +25,15 @@ cat /tmp/e2e-output.log | grep -E '(passed|failed)'
 cat /tmp/e2e-output.log | tail -20
 ```
 
-Set `VIKUNJA_E2E_SKIP_BUILD=true` to skip rebuilding the API binary when iterating on frontend-only changes.
+Environment variables read by `mage test:e2e` (see `magefile.go` → `Test.E2E`):
+
+- `VIKUNJA_E2E_API_PORT`: API port, random by default. **Set it to `3456` locally.** Specs that log in through the UI post to a relative `/api/v1`, and the frontend then falls back to port 3456 on the same host (`frontend/src/helpers/checkAndSetApiUrl.ts`); with a random port those specs fail with 404. CI runs the API on 3456.
+- `VIKUNJA_E2E_FRONTEND_PORT`: preview server port, random by default.
+- `VIKUNJA_E2E_TESTING_TOKEN`: seeding token, random by default.
+- `VIKUNJA_E2E_SKIP_BUILD=true`: skip rebuilding the API binary when iterating on frontend-only changes.
+
+```bash
+VIKUNJA_E2E_API_PORT=3456 mage test:e2e "tests/e2e/user/login.spec.ts" 2>&1 | tee /tmp/e2e-output.log
+```
+
+Specs that need Dex (OpenID login) or Mailpit (email confirmation, registration notice) only pass in CI, where those run as Docker services. On macOS `misc/menu.spec.ts`'s keyboard-shortcut test fails because Playwright sends Meta while the emulated Windows user agent makes the app expect Ctrl. Details: [.agents/wiki/11-testing-guide.md](../../wiki/11-testing-guide.md).

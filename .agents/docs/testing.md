@@ -2,7 +2,7 @@
 
 ## Backend
 
-- Always via mage: `mage test:web`, `mage test:feature`, `mage test:filter <go-test-filter>`. Plain `go test` does not work.
+- Always via mage: `mage test:web`, `mage test:feature`, `mage test:filter <go-test-filter>`. Plain `go test` fails to compile in a checkout without `frontend/dist/index.html` (`frontend/embed.go` embeds it); mage creates that placeholder and adds `-p 1 -timeout 45m`. Use mage so the flags stay consistent.
 - `mage test:filter` runs most packages with `-short` but re-runs `pkg/webtests` without it, so a filter naming a web test actually executes it.
 - Save output to a file and read the file: `mage test:filter Foo 2>&1 | tee /tmp/out.log`. Tests are expensive; never re-run one just to grep differently.
 - Fixtures live in `pkg/db/fixtures/`. Use them instead of inventing data.
@@ -14,3 +14,5 @@
 - Before adding a component test, check `frontend/tests/e2e/` for the same scenario. If an e2e test covers it, or can with a small extension, extend the e2e test instead. Component tests are for cases that are hard to exercise reliably end to end.
 - Unit tests: `pnpm vitest run <file>` in `frontend/`. Mock the generated client with `vi.mock('@/client/generated', () => sdk)` and `@/message` when the code toasts.
 - Typecheck with `pnpm typecheck` (project references) and read the log. It has well over a thousand pre-existing errors; compare the count for your files before and after. Do not use `vue-tsc -p tsconfig.app.json`: it reports a spurious TS2589 on `i18n.global.t` that the project build does not.
+
+Details, harness names, and how to write each kind of test: [.agents/wiki/11-testing-guide.md](../wiki/11-testing-guide.md).

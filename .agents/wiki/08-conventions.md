@@ -15,7 +15,7 @@ Coding style on each side, patterns to copy and to avoid (each with a real examp
 
 ### Data access
 
-- **No raw SQL**, including migrations and tests. Use the XORM session and `xorm.io/builder`: `s.Where(builder.In("id", ids))`, `s.Cols("done").Update(t)`. Never `s.Exec`, `s.Query`, or `builder.Expr` with hand-built strings.
+- **No raw SQL**, including migrations and tests. Use the XORM session and `xorm.io/builder`: `s.Where(builder.In("id", ids))`, `s.Cols("done").Update(t)`. Never `s.Exec`, `s.Query`, or `builder.Expr` with hand-built strings. A handful of grandfathered exceptions exist (`pkg/models/project_access.go` permission CTE, `subscription.go` recursive CTE, `project_repair.go`, `task_position.go`, `task_search.go`, `teams.go`); do not add to them without a reason a reviewer will accept.
 - **`builder.In("col")` with no arguments is dropped by `Where` and matches every row.** Pass an empty typed slice (`[]int64{}`) to get `0=1`. Example of the safe form: `pkg/models/project.go` around line 592 (`builder.In("id", ids)` where `ids` is always a slice).
 - Models receive `s *xorm.Session` and never commit. Reads inside a request reuse the session's memo (`db.Remember`); do not replace the session context yourself (`db.SetSessionContext`).
 - Migrations: `partialSync` for existing tables, plain `tx.Sync` only for brand-new tables, every DDL error returned, cross-DB checked. Details in [db-and-migrations](components/backend/db-and-migrations.md) and the `migration` skill.
@@ -47,7 +47,7 @@ One struct per error in `pkg/models/error.go` (or the package's `error.go`), wit
 - New components need multi-word names (`TaskDetailHeading`, not `Heading`). About 50 legacy single-word names are grandfathered in the ESLint allowlist.
 - Icon-only buttons need an accessible name (local rule `vikunja/icon-button-accessible-name`).
 - No `for...in`. No `.test.ts` linting (ESLint ignores tests) and no linting of `src/client/generated`.
-- Logical CSS properties only (`margin-inline-start`), enforced by `stylelint-use-logical`. Tailwind utilities are prefixed `tw-`. Bulma helpers still exist for spacing (`theme/logical-spacing.scss`).
+- Logical CSS properties only (`margin-inline-start`), enforced by `stylelint-use-logical`. Tailwind is wired with a `tw-` prefix but no component uses it yet; prefer scoped SCSS with the design tokens, and Bulma helpers for spacing (`theme/logical-spacing.scss`).
 - Strings: `const {t} = useI18n({useScope: 'global'})` then `t('key')` (`frontend/src/views/labels/ListLabels.vue`). Reuse an existing key with the same English value before adding one.
 - Test ids: `v-cy="name"` renders `data-cy` in dev or when `window.TESTING` is true (`src/directives/testid.ts`); Playwright's `testIdAttribute` is `data-cy`.
 
@@ -102,7 +102,7 @@ Vitest files sit next to the code. Mock the generated client with `vi.mock('@/cl
 | Add a filter field or operator | `pkg/models/task_collection_filter.go` and `frontend/src/helpers/filters.ts` (+ `FilterAutocomplete.ts`) | Frontend rejects or mistransforms the query |
 | Add a websocket event | `validEvents`, a `pkg/websocket/listener.go` bridge, frontend subscriber | Subscribe returns `invalid_event` |
 | Add a cron job | `Register*Cron()` and the call in `pkg/initialize/init.go` → `FullInit` | Never scheduled |
-| Add an importer | `pkg/modules/migration/<name>/`, route wiring in `registerMigrations`, `/info` advertising, `frontend/src/views/migrate/migrators.ts`, i18n keys | UI does not offer it |
+| Add an importer | `pkg/modules/migration/<name>/`, v2 wiring in `pkg/routes/api/v2/migration_{oauth,credentials,file,csv}.go` (v1 `registerMigrations` only for existing importers), `/info` advertising, `frontend/src/views/migrate/migrators.ts`, i18n keys | UI does not offer it |
 | Change the OpenAPI shape of an exported package | `pkg/yaegi_symbols` regeneration (CI does it), veans `internal/client/types.go` | Plugins or the CLI break |
 | Add a pro feature | `pkg/license` `Feature*`, `RequireFeature` on routes, `enabled_pro_features` in `/info`, `frontend/src/constants/proFeatures.ts`, router `meta` guard | Feature visible without license or hidden with one |
 | Add a locale | `frontend/src/i18n/index.ts`, `useDayjsLanguageSync.ts`, `pkg/i18n/i18n.go`, Crowdin | Language not selectable or rejected by validation |

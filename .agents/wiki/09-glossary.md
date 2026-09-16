@@ -16,7 +16,7 @@ Terms that mean something specific in this codebase, plus the naming conventions
 | **Index / identifier** | `Task.index` is the per-project counter; `Project.identifier` is the prefix; together `PROJ-12`. Empty identifier renders `#12` | `pkg/models/task_index.go` |
 | **Saved filter** | A stored `TaskCollection` query that behaves like a read-only project (pseudo id) | `pkg/models/saved_filters.go` |
 | **Filter (query)** | The text DSL `done = false && due_date < now+7d`, parsed by fexpr after textual preprocessing; supports datemath | `pkg/models/task_collection_filter.go`, `frontend/src/helpers/filters.ts` |
-| **Datemath** | Relative date expressions like `now/d`, `now+1w`, from `go-datemath`; used in filters and reminders UI | `pkg/models/task_collection_filter.go` → `safeDatemathParse`, `frontend/src/helpers/time/dateMath.ts` |
+| **Datemath** | Relative date expressions like `now/d`, `now+1w`, from `go-datemath`; parsed only on the server. The frontend offers presets and help text, never parses them | `pkg/models/task_collection_filter.go` → `safeDatemathParse`; `frontend/src/components/date/dateRanges.ts`, `DatemathHelp.vue` |
 | **Task collection** | The request DTO for listing tasks: `filter`, `sort_by`, `order_by`, `expand`, `filter_timezone`, `s`/`q` search | `pkg/models/task_collection.go` |
 | **Expand** | Query parameter asking for extra relations on tasks (`buckets`, `comments`, `reactions`, `is_unread`, `subscription`) | `pkg/models/task_collection.go` → `TaskCollectionExpandable` |
 | **Quick add magic** | Prefix syntax in the task title input: `*label`, `+project`, `!priority`, dates in words; Vikunja and Todoist prefix modes | `frontend/src/modules/quickAddMagic/` |

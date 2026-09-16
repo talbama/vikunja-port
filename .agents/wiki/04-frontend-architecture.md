@@ -43,7 +43,7 @@ Routes with `meta.showAsModal` (project settings, filter settings) render on top
 
 ## State management
 
-All stores are setup-style (`defineStore('x', () => {...})`) with the `import.meta.hot.accept(acceptHMRUpdate(...))` block. See [stores](components/frontend/stores.md).
+All stores are setup-style (`defineStore('x', () => {...})`); all but `viewFilters` end with the `import.meta.hot.accept(acceptHMRUpdate(...))` block. See [stores](components/frontend/stores.md).
 
 | Store | Owns |
 |---|---|
@@ -69,7 +69,7 @@ flowchart LR
         SV --> MO --> MT
         SV --> AX
     end
-    subgraph new [New layer: 23 importers]
+    subgraph new [New layer: 24 importers incl. one test]
         GEN[src/client/generated<br/>sdk.gen.ts + types.gen.ts]
         HTTP[src/client/http.ts<br/>fetch client config]
         Q[src/client/queries/*.ts<br/>TanStack Query options]
@@ -131,7 +131,7 @@ Three sources, in order of preference for new code:
 
 ## Styling
 
-Read `frontend/src/styles/README.md`; it is accurate. In short: `bulma-css-variables` with individually imported partials (`src/styles/global.scss`), design tokens as CSS custom properties in `src/styles/custom-properties/`, dark mode via a `dark` class on `<html>` toggled by `src/composables/useColorScheme.ts`, `common-imports.scss` injected into every SCSS block by Vite (must emit no CSS), and Tailwind v4 utilities prefixed `tw-` from `src/styles/tailwind.css` (imported only in `App.vue`). Stylelint enforces logical properties (`margin-inline-start`, not `margin-left`). Details: [styling-and-theming](components/frontend/styling-and-theming.md).
+Read `frontend/src/styles/README.md`; it is accurate. In short: `bulma-css-variables` with individually imported partials (`src/styles/global.scss`), design tokens as CSS custom properties in `src/styles/custom-properties/`, dark mode via a `dark` class on `<html>` toggled by `src/composables/useColorScheme.ts`, `common-imports.scss` injected into every SCSS block by Vite (must emit no CSS), and Tailwind v4 wired through `src/styles/tailwind.css` (imported only in `App.vue`) with a `tw-` prefix. As of 2026-09-16 no component uses a `tw-` class; Tailwind is available, not adopted. Stylelint enforces logical properties (`margin-inline-start`, not `margin-left`). Details: [styling-and-theming](components/frontend/styling-and-theming.md).
 
 ## Build and dev server
 

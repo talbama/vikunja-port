@@ -90,7 +90,7 @@ Rules that follow from the code:
 - Webhooks: outbound POSTs per project (`pkg/models/webhooks.go`), events registered in `pkg/models/listeners.go` → `RegisterEventForWebhook`.
 - CalDAV: `/dav/projects/<id>` with Basic auth (CalDAV token from user settings). Format code in `pkg/caldav/`.
 - Atom feed: `/feeds/notifications.atom` and `/api/v2/notifications.atom` with a feeds-scoped API token.
-- MCP: `/api/v2/mcp` streamable HTTP; tools derived from the v2 spec for operation IDs in `pkg/modules/mcp/exposure.go` → `exposedOperations` (typed tools for labels/projects/tasks, catalog tools discoverable through `find_action` / `do_action`).
+- MCP: `/api/v2/mcp` streamable HTTP; tools derived from the v2 spec for operation IDs in `pkg/modules/mcp/exposure.go` → `exposedOperations` (typed tools for labels, projects, tasks, task assignees, task comments, and user search; everything else as catalog actions discoverable through `find_action` / `do_action`). Requires an API token with the `mcp:access` scope, which `pkg/models/api_routes.go` → `init()` seeds explicitly rather than deriving from route collection. See [mcp](components/backend/mcp.md).
 
 ## Keeping both sides in sync
 
@@ -104,7 +104,7 @@ When the contract changes, do these in order. Each step names what silently brea
 6. **Frontend types**: use the regenerated `types.gen.ts`. If legacy code consumes the field, update the matching `frontend/src/modelTypes/I*.ts` and model class too (camelCase). Skipped: legacy views show stale data.
 7. **Error strings**: new `ErrCode*` → `frontend/src/i18n/lang/en.json` under `"error"`. Skipped: users see the raw server message.
 8. **MCP**: add the operation ID to `exposedOperations` if agents should reach it. Skipped: tool absent, no error.
-9. **API token scopes**: nothing to do; routes are collected at startup. But choose the path so the derived `(group, permission)` reads sensibly.
+9. **API token scopes**: nothing to do for ordinary routes; they are collected at startup (`collectRoutesForAPITokens`). Choose the path so the derived `(group, permission)` reads sensibly. Routes under the MCP prefix are excluded from collection and use the hand-seeded `mcp:access` scope instead.
 10. **veans** (`veans/internal/client/types.go`) mirrors models by hand; update it if the CLI uses the field.
 11. **Swagger v1**: do not run `mage generate:swagger-docs` unless asked; CI regenerates after merge.
 

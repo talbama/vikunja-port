@@ -33,11 +33,11 @@ Rules that keep this acyclic:
 
 | Function | Does | Used by |
 |---|---|---|
-| `LightInit()` | `log.InitLogger()`, `config.InitConfig()`, timezone check, `red.InitRedis()`, `keyvalue.InitStorage()` | everything |
-| `FullInitWithoutAsync()` | `LightInit()`, then `files.InitFileHandler`, **`migration.Migrate(nil)`** (migrations run on every start), `InitEngines()` (`models.SetEngine`, `files.SetEngine`, ParadeDB indexes), `license.Init`, `audit.Init` if enabled, `mail.StartMailDaemon`, LDAP connect, OIDC provider discovery (fatal on duplicate issuer), `i18n.Init`, `plugins.Initialize` | `healthcheck`, `migrate`, `user`, `dump`, `restore` |
-| `FullInit()` | The above, then `cron.Init()` and 14 `Register*Cron()` calls, `ws.InitHub()`, and a goroutine that registers listeners (`models.RegisterListeners`, `migrationHandler.RegisterListeners`, `ws.RegisterListeners`) and runs `events.InitEvents()` | `web` |
+| `LightInit()` | `log.InitLogger()`, `config.InitConfig()`, timezone check, `red.InitRedis()`, `keyvalue.InitStorage()` | `migrate` (the engine is created inside `migration.initMigration`), `testmail` (plus `mail.StartMailDaemon`) |
+| `FullInitWithoutAsync()` | `LightInit()`, then `files.InitFileHandler`, **`migration.Migrate(nil)`** (migrations run on every start), `InitEngines()` (`models.SetEngine`, `files.SetEngine`, ParadeDB indexes), `license.Init`, `audit.Init` if enabled, `mail.StartMailDaemon`, LDAP connect, OIDC provider discovery (fatal on duplicate issuer), `i18n.Init`, `plugins.Initialize` | `healthcheck`, `dump`, `restore`, `repair *` |
+| `FullInit()` | The above, then `cron.Init()`, 13 `Register*Cron()` calls plus the one-shot `openid.CleanupSavedOpenIDProviders()`, `ws.InitHub()`, and a goroutine that registers listeners (`models.RegisterListeners`, `migrationHandler.RegisterListeners`, `ws.RegisterListeners`) and runs `events.InitEvents()` | `web`, every `user *` subcommand |
 
-`events.InitEvents()` blocks in Watermill's `router.Run`; the `BootedEvent` dispatch written after it in the same goroutine therefore only fires when the router stops. Unverified: whether anything depends on `BootedEvent`.
+`doctor` only initializes the logger and config. `events.InitEvents()` blocks in Watermill's `router.Run`; the `BootedEvent` dispatch written after it in the same goroutine therefore only fires when the router stops. No listener subscribes to `BootedEvent`, so nothing depends on it.
 
 ## Request pipeline
 

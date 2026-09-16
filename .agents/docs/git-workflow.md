@@ -15,4 +15,4 @@ When asked to create a plan, write it to `plans/<kebab-case-name>.md` (e.g. `fix
 
 ## Worktrees
 
-To implement a plan in isolation, invoke the `prepare-worktree` skill.
+To implement a plan in isolation, invoke the `prepare-worktree` skill. `mage dev:prepare-worktree <name> <plan-path>` moves the plan file into the new worktree's `plans/` directory (it is no longer in the original checkout), copies `config.yml` with a rewritten rootpath, and installs frontend dependencies.
