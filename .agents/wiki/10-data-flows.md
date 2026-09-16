@@ -40,7 +40,7 @@ Files and symbols:
 | Transport | `frontend/src/helpers/fetcher.ts` → `HTTPFactory()`; body snake-cased by `objectToSnakeCase` |
 | Route | `pkg/routes/routes.go` registers `/login` in the credential group with `noAuthRateLimit`; path listed in `unauthenticatedAPIPaths` |
 | Handler | `pkg/routes/api/v1/login.go` → `Login` |
-| Credential check | `pkg/routes/api/shared/auth.go` → `AuthenticateUserCredentials`, `enforceLoginTOTP`; dispatches `user.LoginSucceededEvent` / `LoginFailedEvent` |
+| Credential check | `pkg/routes/api/shared/auth.go` → `AuthenticateUserCredentials`, `enforceLoginTOTP`. `user.LoginFailedEvent` is dispatched from `pkg/user/user.go` → `CheckUserCredentials`; `LoginSucceededEvent` from `pkg/modules/auth/auth.go` → `IssueUserToken` |
 | Token issue | `pkg/modules/auth/auth.go` → `NewUserAuthTokenResponse` → `IssueUserToken` → `models.CreateSession`, `NewUserJWTAuthtoken`, `SetRefreshTokenCookie` |
 | Post-login | `authStore.checkAuth()` decodes the JWT and calls `refreshUserInfo()` (`GET /user`), then `App.vue` switches to the authenticated layout and `ContentAuth.vue` connects the websocket |
 

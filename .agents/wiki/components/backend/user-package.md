@@ -72,7 +72,7 @@ Disabled and locked users can still be loaded (with a status error) so admins, n
 
 ## Dependencies
 
-- **Uses:** `pkg/db` (sessions, memo, `ILIKE`), `pkg/config`, `pkg/events`, `pkg/notifications`, `pkg/keyvalue` (failed-attempt counters, TOTP replay, email cooldown), `pkg/cron`, `pkg/i18n`, `pkg/utils`, `pkg/web` (`Auth`, `HTTPError`), `golang.org/x/crypto/bcrypt`, `github.com/pquerna/otp`, `github.com/golang-jwt/jwt`, Echo (only `GetCurrentUser`).
+- **Uses:** `pkg/db` (sessions, memo, `ILIKE`), `pkg/config`, `pkg/events`, `pkg/notifications`, `pkg/modules/keyvalue` (failed-attempt counters, TOTP replay, email cooldown), `pkg/cron`, `pkg/i18n`, `pkg/utils`, `pkg/web` (`Auth`, `HTTPError`), `golang.org/x/crypto/bcrypt`, `github.com/pquerna/otp`, `github.com/golang-jwt/jwt`, Echo (only `GetCurrentUser`).
 - **Used by:** `pkg/models` (everything), routes v1/v2 and `pkg/routes/api/shared`, CalDAV, feeds, importers, OAuth2 server, license, websocket, richtext, avatar upload.
 
 ## Invariants and assumptions

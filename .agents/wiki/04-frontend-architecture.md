@@ -131,7 +131,7 @@ Three sources, in order of preference for new code:
 
 ## Styling
 
-Read `frontend/src/styles/README.md`; it is accurate. In short: `bulma-css-variables` with individually imported partials (`src/styles/global.scss`), design tokens as CSS custom properties in `src/styles/custom-properties/`, dark mode via a `dark` class on `<html>` toggled by `src/composables/useColorScheme.ts`, `common-imports.scss` injected into every SCSS block by Vite (must emit no CSS), and Tailwind v4 wired through `src/styles/tailwind.css` (imported only in `App.vue`) with a `tw-` prefix. As of 2026-09-16 no component uses a `tw-` class; Tailwind is available, not adopted. Stylelint enforces logical properties (`margin-inline-start`, not `margin-left`). Details: [styling-and-theming](components/frontend/styling-and-theming.md).
+Read `frontend/src/styles/README.md`; it is accurate except that it presents `tw-` Tailwind utilities as in use. In short: `bulma-css-variables` with individually imported partials (`src/styles/global.scss`), design tokens as CSS custom properties in `src/styles/custom-properties/`, dark mode via a `dark` class on `<html>` toggled by `src/composables/useColorScheme.ts`, `common-imports.scss` injected into every SCSS block by Vite (must emit no CSS), and Tailwind v4 wired through `src/styles/tailwind.css` (imported only in `App.vue`) with a `tw-` prefix. As of 2026-09-16 no component uses a `tw-` class; Tailwind is available, not adopted. Stylelint enforces logical properties (`margin-inline-start`, not `margin-left`). Details: [styling-and-theming](components/frontend/styling-and-theming.md).
 
 ## Build and dev server
 

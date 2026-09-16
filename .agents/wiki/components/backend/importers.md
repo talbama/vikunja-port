@@ -59,7 +59,7 @@ sequenceDiagram
     participant L as (File)MigrationListener
     participant I as importer.Migrate
     UI->>H: POST /migration/<name>/migrate (code | credentials | multipart "import")
-    H->>H: ValidateFile / CheckCredentials (sync, 400) → ClaimMigration (412 if running) → StoreImportUpload (files only)
+    H->>H: files: ValidateFile (400) → ClaimMigration (412 if running) → StoreImportUpload; credentials: ClaimMigration → CheckCredentials (400, releases the claim via failClaim)
     H->>L: Dispatch migration.requested / migration.file.requested; reply 200 "Migration was started successfully."
     L->>I: GetMigrationStatusByID + StartRun heartbeat, then Migrate(user[, file])
     I->>I: InsertFromStructure(tree): commit, or rollback + blob cleanup

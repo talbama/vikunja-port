@@ -129,7 +129,7 @@ Public v2 ops set `Security: publicSecurity` (empty list, `auth_public.go:36`) *
 
 ## Dependencies
 
-- **Uses:** `pkg/user`, `pkg/models` (sessions, tokens, link shares, team sync, events), `pkg/db`, `pkg/config`, `pkg/events`, `pkg/keyvalue` (failed-attempt counters, TOTP replay guard, provider cache), `pkg/notifications`, `pkg/license` (route discovery), `pkg/modules/humabridge`, `pkg/modules/avatar/upload`, `github.com/golang-jwt/jwt/v5`, `github.com/labstack/echo-jwt/v5`, `github.com/coreos/go-oidc/v3`, `golang.org/x/oauth2`, `github.com/go-ldap/ldap/v3`, `github.com/pquerna/otp`.
+- **Uses:** `pkg/user`, `pkg/models` (sessions, tokens, link shares, team sync, events), `pkg/db`, `pkg/config`, `pkg/events`, `pkg/modules/keyvalue` (failed-attempt counters, TOTP replay guard, provider cache), `pkg/notifications`, `pkg/license` (route discovery), `pkg/modules/humabridge`, `pkg/modules/avatar/upload`, `github.com/golang-jwt/jwt/v5`, `github.com/labstack/echo-jwt/v5`, `github.com/coreos/go-oidc/v3`, `golang.org/x/oauth2`, `github.com/go-ldap/ldap/v3`, `github.com/pquerna/otp`.
 - **Used by:** every handler via `GetAuthFromClaims`/`authFromCtx`; `pkg/routes` middleware; `pkg/websocket` (`GetUserIDFromToken`); `pkg/routes/caldav`, `pkg/routes/feeds`, `pkg/modules/mcp` (token helpers); `pkg/initialize` (LDAP connect, provider discovery, crons).
 
 ## Invariants and assumptions
@@ -172,7 +172,7 @@ Public v2 ops set `Security: publicSecurity` (empty list, `auth_public.go:36`) *
 | OAuth redirect and PKCE | `pkg/modules/auth/oauth2server/{client,pkce}_test.go` | |
 | Token scopes and method matching | `pkg/models/api_routes_test.go` (17 tests), `api_tokens_test.go`, `pkg/webtests/api_token_method_matching_test.go`, `expand_scope_routes_test.go`, `huma_api_token_patch_test.go` | `mage test:filter TestAPIToken` |
 | TOTP replay and lockout | `pkg/user/totp_test.go` | `mage test:filter TestHandleFailedTOTPAuth` |
-| HTTP flows: login, refresh, logout, register, reset, link share, sessions, OAuth2, TOTP, CalDAV tokens on both versions | `pkg/webtests/{login,register,token,sessions,link_sharing_auth,oauth2,user_totp,user_password_*}_test.go`, `huma_auth_*_test.go`, `huma_session_test.go`, `huma_caldav_token_test.go`, `huma_user_totp_test.go` | `go test -run TestLogin ./pkg/webtests/` (`mage test:filter` passes `-short`, which skips webtests) |
+| HTTP flows: login, refresh, logout, register, reset, link share, sessions, OAuth2, TOTP, CalDAV tokens on both versions | `pkg/webtests/{login,register,token,sessions,link_sharing_auth,oauth2,user_totp,user_password_*}_test.go`, `huma_auth_*_test.go`, `huma_session_test.go`, `huma_caldav_token_test.go`, `huma_user_totp_test.go` | `mage test:filter TestLogin` (reruns `pkg/webtests` without `-short`) |
 
 Gaps: `RefreshSession` replay (`ErrRefreshTokenAlreadyUsed`, `RotateRefreshToken`'s affected-rows check) has no test at all; the only reference in tests is the classification table in `TestIsUnusableRefreshToken` (grep 2026-09-16); there is no test file for `pkg/routes/api/shared/` itself (its callers are tested).
 

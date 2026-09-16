@@ -33,7 +33,7 @@
 | `FieldsOptionalByDefault = true` | schema stays permissive so partial bodies match v1; presence rules come from `valid:` tags via `validateInputBody` |
 | `Formats[application/x-www-form-urlencoded] = formURLEncodedFormat` | request-only format that re-marshals form values to JSON (OAuth token endpoint, RFC 6749); the default map is copied, not mutated |
 | `Info.Description = richTextFormatAPIDescription` | Scalar landing text about `?format=markdown` |
-| Security schemes | `JWTKeyAuth` (bearer JWT), `APITokenAuth` (bearer `tk_`), `BasicAuth` (Atom feed only); `oapi.Security` applies JWT and API token globally; public ops set `Security: []map[string][]string{}` (`health.go`, `info.go`, `testing.go`, and the `publicSecurity` var shared by `auth_public.go`, `invite_links.go`) **and** must be listed in `unauthenticatedAPIPaths` |
+| Security schemes | `JWTKeyAuth` (bearer JWT), `APITokenAuth` (bearer `tk_`), `BasicAuth` (Atom feed only); `oapi.Security` applies JWT and API token globally; public ops set `Security: []map[string][]string{}` (`health.go`, `info.go`, `testing.go`, plus `auth_login.go`, `auth_refresh.go`, `auth_openid.go`, `oauth.go`, and the `publicSecurity` var shared by `auth_public.go`, `invite_links.go`) **and** must be listed in `unauthenticatedAPIPaths` |
 | `Servers` | `[{URL: "/api/v2"}, {URL: publicURL + "/api/v2"}]`. **Index 0 must stay relative**: Huma's `SchemaLinkTransformer` reads `Servers[0]` and would double-prefix `$schema` links otherwise (comment in `huma.go`) |
 
 `Register` sets `DefaultStatus` from the verb when unset (POST → 201, DELETE → 204), wraps the handler with `validateInputBody`, and forwards to `huma.Register`. So v2 validates-then-authorizes exactly like v1. `withUploadLimits(op)` sets `MaxBodyBytes = (maxfilesize + 2) MB` and `BodyReadTimeout = 15m` for multipart uploads (Huma's default 5 s read deadline spans the whole body). Echo's global `BodyLimit` still applies on top.
@@ -84,7 +84,7 @@ Per-resource read bodies embed the model by value plus `MaxPermission` (`labels.
 
 ### Docs, canonical spec, MCP hook
 
-- Scalar: `docs.go` embeds `scalar/scalar.html` and `scalar/scalar.standalone.js` (bundle refreshed by `mage generate:scalar-bundle`, pinned in `magefile.go`).
+- Scalar: `docs.go` embeds `scalar/scalar.html` and `scalar/scalar.standalone.js` (bundle refreshed by `mage generate:scalarBundle`, pinned in `magefile.go`).
 - `NewCanonicalAPI()` (`canonical.go`) builds a bare Echo, force-enables every feature flag (local auth, OpenID, registration, link sharing, TOTP, attachments, comments, webhooks, backgrounds, Todoist/Trello/Microsoft importers), clears the testing token and public URL, runs `RegisterAll` and `RegisterMCPInfo` with a stub, pins `Servers` to `/api/v2`, and asserts the OpenID callback exists and no `/test/` path leaked. `mage generate:frontend-client` feeds it to `openapi-ts`.
 - `RegisterMCPInfo` (`mcp.go`) registers `GET /mcp/info` → `ConnectionSettings{Endpoint, Routes, Presets}`; it rejects API tokens (checks `api_token` on the Echo context) and link shares (`user.GetFromAuth`). Lives here, not in `pkg/modules/mcp`, because that package imports this one.
 
@@ -186,7 +186,7 @@ No v2-specific keys. Feature flags checked inside registrars: `service.testingto
 - Helpers: `pkg/webtests/huma_helpers_test.go` → `humaTokenFor(t, u)`, `humaRequest(t, e, method, path, body, token, contentType)` for chained calls (create → PATCH → GET).
 - 69 `pkg/webtests/huma_*_test.go` files; cross-cutting ones: `huma_errors_test.go` (`TestHuma_ErrorShapeIsRFC9457`, `TestHuma_HealthcheckFailureDoesNotLeakCause`), `huma_non_crud_aliases_test.go`, `huma_richtext_test.go`, `huma_rate_limit_test.go`, `huma_testing_test.go`.
 - Unit: `pkg/routes/api/v2/{errors,canonical,schema_link}_test.go`, `pkg/modules/humabridge/humabridge_test.go` (`TestAutoPatchUnderGroup`, `TestServeHTTPSkipsAlreadyPrefixedPath`).
-- Run a webtest directly: `go test -run 'TestLabel' ./pkg/webtests/ 2>&1 | tee /tmp/out.log` (`mage test:filter` adds `-short`, which skips `pkg/webtests`).
+- Run a webtest: `mage test:filter TestLabel 2>&1 | tee /tmp/out.log` (the second pass reruns `pkg/webtests` without `-short`).
 
 ## Gotchas and tech debt
 

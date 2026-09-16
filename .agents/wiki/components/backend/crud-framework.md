@@ -144,7 +144,7 @@ The README of the former standalone library `code.vikunja.io/web` (LGPL badge, `
 |---|---|---|
 | Error-code uniqueness across packages | `pkg/web/error_codes_test.go` | `mage test:filter TestErrorCodesAreUnique` |
 | Upload result mapping | `pkg/web/files/task_attachment_test.go` → `TestBuildUploadResult` | `mage test:filter TestBuildUploadResult` |
-| The pipeline itself | No unit tests in `pkg/web/handler/` (no `_test.go` files). Covered end to end by `pkg/webtests`: `webHandlerTest` drives `WebHandler` methods per model (`testReadAllWithUser`, `testCreateWithLinkShare`, …), `webHandlerTestV2` drives the Huma routes; `project_test.go` asserts `x-max-permission` values, `huma_project_test.go` the `max_permission` field | `go test -run TestProject ./pkg/webtests/` (webtests skip under `mage test:filter`'s `-short`) |
+| The pipeline itself | No unit tests in `pkg/web/handler/` (no `_test.go` files). Covered end to end by `pkg/webtests`: `webHandlerTest` drives `WebHandler` methods per model (`testReadAllWithUser`, `testCreateWithLinkShare`, …), `webHandlerTestV2` drives the Huma routes; `project_test.go` asserts `x-max-permission` values, `huma_project_test.go` the `max_permission` field | `mage test:filter TestProject` (reruns `pkg/webtests` without `-short`) |
 | Model `Can*` contracts | `pkg/models/*_test.go` per entity; the crudable skill requires positive, negative, inherited and shared-access cases | `mage test:filter TestLabel` |
 
 Not covered: pagination clamping, the `x-pagination-*` headers and the nil-slice normalisation have no test at all (no file under `pkg/webtests` mentions `x-pagination-total-pages`, grep 2026-09-16); `DoReadAll` skipping `Can*` is a design fact, not a tested one.

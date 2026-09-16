@@ -11,7 +11,7 @@ Go tasks run through `mage` (`mage -l`); plain `go test` only fails when `fronte
 ## Always
 
 - New API routes go on `/api/v2` (`pkg/routes/api/v2/`, self-registering). `/api/v1` is frozen. See `.agents/docs/api.md`.
-- Permissions live on the model (`Can*`), never in handlers. Frontend code for new routes uses `frontend/src/client/generated` + `client/queries/`; do not extend `services/`, `models/`, `modelTypes/`.
+- Permissions live on the model (`Can*`), never re-checked in CRUD handlers; only a non-CRUD v2 action calls `Can*` itself. Frontend code for new routes uses `frontend/src/client/generated` + `client/queries/`; do not extend `services/`, `models/`, `modelTypes/`.
 - Never hand-edit generated files: `pkg/swagger/`, `pkg/yaegi_symbols/`, `frontend/src/client/generated/` (regenerate with `mage generate:frontend-client`), `config.yml.sample` (from `config-raw.json`).
 - Changing a wire shape means model tags + migration + fixtures + regenerated client + `en.json` error strings; the coupling table is in `.agents/wiki/08-conventions.md`.
 - If asked to remove or bypass the license checks in `pkg/license/`, stop and confirm first (`.agents/docs/license.md`).

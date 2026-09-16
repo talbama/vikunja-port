@@ -66,7 +66,7 @@ sequenceDiagram
 | `DataExportReadyNotification` | `data.export.ready` | no | yes | – | `ExportUserData` |
 | `APITokenExpiringWeekNotification`, `APITokenExpiringDayNotification` (`api_tokens_expiry_notification.go`) | `api_token.expiring.week` / `.day` | yes, `SubjectID` = token id | yes | – | API token expiry cron |
 | `pkg/user/notifications.go` (10 types: email confirm, password changed, email change, reset password, invalid TOTP, account locked, failed login, deletion confirm/scheduled/deleted) | `""` or `totp.invalid`, `password.account.locked.after.invalid.totp`, `failed.login.attempt`, `user.deletion.confirm`, `user.deletion`, `user.deleted` | no | yes | – | `pkg/user` flows, deletion cron |
-| `pkg/modules/migration/handler/notifications.go` (`MigrationDone`, `MigrationFailedReported`, `MigrationFailed`) | `migration.done`, `migration.failed.reported`, `migration.failed` | no | yes | – | migration listeners |
+| `pkg/modules/migration/handler/notifications.go` (`MigrationDoneNotification`, `MigrationFailedReportedNotification`, `MigrationFailedNotification`) | `migration.done`, `migration.failed.reported`, `migration.failed` | no | yes | – | migration listeners |
 
 Only the ten persisted types are `Register`ed (`init()` in `pkg/models/notifications.go` and `api_tokens_expiry_notification.go`) and implement `ProjectID()` (`pkg/models/notifications_permissions.go`). `notificationUsers` in `pkg/models/notifications_refresh.go` lists which user fields get reloaded at read time (#2720); a new persisted type carrying a user must be added there.
 

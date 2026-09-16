@@ -60,14 +60,14 @@ erDiagram
 | TaskPosition | `TaskPosition` (`task_position.go`) | `task_positions` | `position` on `ITask` | `(task_id, project_view_id, position)`; float positions with recalculation and conflict repair |
 | Bucket | `Bucket` (`kanban.go`) | `buckets` | `IBucket` / `Bucket` | Belongs to a view; `limit` (0 = unlimited), computed `count`, embeds `TaskCollection` |
 | TaskBucket | `TaskBucket` (`kanban_task_bucket.go`) | `task_buckets` | `bucket_id` on task | One row per `(task_id, project_view_id)`: a task sits in one bucket per kanban view |
-| Label, LabelTask | `label.go`, `label_task.go` | `labels`, `label_tasks` | `ILabel` / `Label` (fully on the generated client) | Labels are owned by their creator and visible through tasks the caller can see |
+| Label, LabelTask | `label.go`, `label_task.go` | `labels`, `label_tasks` | generated `Label` only (no legacy `ILabel`; fully on the generated client) | Labels are owned by their creator and visible through tasks the caller can see |
 | TaskAssginee (sic) | `task_assignees.go` | `task_assignees` | `assignees` on task | Exported type name has a long-lived typo; table is correct |
 | TaskReminder | `task_reminder.go` | `task_reminders` | `ITaskReminder` | Absolute `reminder` or relative `relative_period` seconds from `relative_to` (`due_date`, `start_date`, `end_date`) |
 | TaskRelation | `task_relation.go` | `task_relations` | `ITaskRelation`, `RELATION_KIND` | Kinds: `subtask`, `parenttask`, `related`, `duplicateof`, `duplicates`, `blocking`, `blocked`, `precedes`, `follows`, `copiedfrom`, `copiedto`. Creating one inserts both directions. Frontend enum lacks `duplicateof` and misspells `PROCEDES` |
 | TaskComment | `task_comments.go` | `task_comments` | `ITaskComment` | HTML body (TipTap); mentions resolved by `pkg/richtext` |
 | TaskAttachment + File | `task_attachment.go`, `files.File` (`pkg/files/files.go`) | `task_attachments`, `files` | `IAttachment`, `IFile` | Blob in local dir or S3 keyed by file id; `cover_image_attachment_id` on task |
 | Team, TeamMember | `teams.go` | `teams`, `team_members` | `ITeam`, `ITeamMember` | `external_id`/`issuer` for OIDC-synced teams (`team_sync.go`), `is_public` |
-| ProjectUser, TeamProject | `project_users.go`, `project_team.go` | `users_projects`, `team_projects` | `IUserShare`, `ITeamShare` | Share rows with `permission` |
+| ProjectUser, TeamProject | `project_users.go`, `project_team.go` | `users_projects`, `team_projects` | `IUserShareBase`, `ITeamShareBase` | Share rows with `permission` |
 | LinkSharing | `link_sharing.go` | `link_shares` | `ILinkShare` | `hash`, `permission`, `sharing_type` (1 without password, 2 with), `password` (bcrypt) |
 | SavedFilter | `saved_filters.go` | `saved_filters` | `ISavedFilter` | `filters` is a `TaskCollection`; appears as a pseudo project with id `-(id+1)` |
 | Subscription | `subscription.go` | `subscriptions` | `ISubscription` | `entity` (`project`, `task`; value 1 was namespaces and is kept to avoid renumbering), unique per `(entity, entity_id, user_id)`, `muted` overrides inheritance |

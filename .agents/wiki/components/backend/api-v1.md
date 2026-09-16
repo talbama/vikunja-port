@@ -37,7 +37,7 @@ Policy in `../../../docs/api.md`: v1 keeps running and is supported but does not
 | `admin := a.Group("/admin", RequireFeature(license.FeatureAdminPanel), RequireInstanceAdmin())` | both gates return 404 | `/overview`, `/users`, `/users/:id/admin`, `/users/:id/status`, `/users/:id`, `/projects`, `/projects/:id/owner` |
 | `a.Group("/plugins")` and `n.Group("/plugins")` | if `plugins.enabled` | `plugins.RegisterPluginRoutes(authenticated, unauthenticated)` (`pkg/plugins/manager.go`) |
 
-All groups share the `/api/v1` prefix, which is why `NewEcho` sets `NoGroupAutoRegister404Routes: true`. `noStoreCacheControl()` is applied to the whole group first. The unauthenticated set is not derived from the groups: a path only skips JWT if it is in `unauthenticatedAPIPaths`, so a route added to `n` or `ur` without that map entry still requires a token.
+All groups share the `/api/v1` prefix, which is why `NewEcho` sets `NoGroupAutoRegister404Routes: true`. `noStoreCacheControl()` is applied to the whole group first. The unauthenticated sub-groups `n`, `ur`, and `tr` are created **before** `a.Use(SetupTokenMiddleware())`, and Echo v5 snapshots parent middleware at `Group()` time, so JWT never runs on routes registered there regardless of `unauthenticatedAPIPaths` (example: `n.DELETE("/test/all", ...)` is not in the map). The map matters for the API-token route table (`requiresJWT`) and for v2's skipper; keep both in sync when adding a public route.
 
 ### The `WebHandler` registration shape
 
@@ -156,7 +156,7 @@ Handlers return Go errors; `pkg/routes/error_handler.go` → `CreateHTTPErrorHan
 
 ## Tests
 
-- `pkg/webtests/<resource>_test.go` drive `WebHandler` routes through `webHandlerTest` (`pkg/webtests/integrations.go`, `testReadAllWithUser`, `testCreateWithLinkShare`, ...). Run one with `go test -run 'TestLabel' ./pkg/webtests/` (`mage test:filter` passes `-short`, which skips webtests; see the `api-v2-routes` skill).
+- `pkg/webtests/<resource>_test.go` drive `WebHandler` routes through `webHandlerTest` (`pkg/webtests/integrations.go`, `testReadAllWithUser`, `testCreateWithLinkShare`, ...). Run one with `mage test:filter TestLabel` (it reruns `pkg/webtests` without `-short`; see the `api-v2-routes` skill).
 - Custom handlers: there are no `_test.go` files in `pkg/routes/api/v1/` or `pkg/routes/api/v1/admin/`; they are covered only through `pkg/webtests`. Routing-level tests: `pkg/routes/error_handler_test.go`, `rate_limit_test.go`, `static_test.go`.
 - Swagger is not tested for accuracy; only staleness (`mage check:got-swag`).
 

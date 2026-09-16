@@ -66,8 +66,8 @@ Do not add a `services/`, `models/`, or `modelTypes/` file.
 1. `mage lint:fix`, `cd frontend && pnpm lint:fix`.
 2. `mage test:filter Test<Resource>`; `pnpm vitest run src/client/queries/<feature>.test.ts`.
 3. Run the API with your `config.yml`, `pnpm dev` (or `mage build && ./vikunja web` to serve the built SPA), exercise the UI, and check `curl` against `/api/v2/<resource>` with a bearer token; confirm `PATCH` works with `application/merge-patch+json`.
-4. Add or extend a Playwright spec under `frontend/tests/e2e/<area>/` and run `VIKUNJA_E2E_API_PORT=3456 mage test:e2e "tests/e2e/<area>/<name>.spec.ts"`.
-5. `mage check:frontend-client` and `mage check:translations`.
+4. Add or extend a Playwright spec under `frontend/tests/e2e/<area>/` and run `VIKUNJA_E2E_API_PORT=3456 VIKUNJA_E2E_SKIP_BUILD=true mage test:e2e "tests/e2e/<area>/<name>.spec.ts"` (skip the rebuild if you just ran `mage build`).
+5. `mage check:frontend-client` (regenerates twice and diffs; no need to run `generate:frontend-client` first) and `mage check:translations`.
 
 ## Commonly missed
 

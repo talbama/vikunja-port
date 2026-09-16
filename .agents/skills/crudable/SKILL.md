@@ -21,7 +21,7 @@ Models in `pkg/models/` that expose CRUD operations must implement the `CRUDable
 3. If a handler or service needs to check access, call the `Can*` method. Do **not** re-implement the check inline or duplicate the logic in `pkg/routes/`.
 4. Do not implement empty stub methods just to satisfy the interface, instead embed the interface in the struct. Check existing models to see how that's done.
 
-Look at `pkg/models/project.go` or `pkg/models/task.go` for reference implementations.
+Look at `pkg/models/project.go` or `pkg/models/tasks.go` for reference implementations.
 
 The initial querying of the data should happen in the Can* function. Because we're operating on a pointer, the function that does the work should not need to re-query the model data.
 

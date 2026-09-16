@@ -163,7 +163,7 @@ Returns early if the response is already committed. Then, on the original error:
 | Error handler mapping | `pkg/routes/error_handler_test.go` → `TestCreateHTTPErrorHandler` | `mage test:filter TestCreateHTTPErrorHandler` |
 | pprof gating, change-password redirect | `pkg/routes/pprof_test.go`, `pkg/routes/change_password_test.go` | |
 | `foo[]` normalisation and order | `pkg/routes/middleware/array_param_normalizer_test.go` | `mage test:filter TestNormalizeArrayParams` |
-| End-to-end limits through the real router (v2 unauth, BasicAuth budget, token refresh, `/ws`) | `pkg/webtests/unauth_rate_limit_test.go`, `huma_rate_limit_test.go`, `token_refresh_rate_limit_test.go`, `ws_rate_limit_test.go` | `go test -run TestV2UnauthRateLimit ./pkg/webtests/` (webtests skip under `mage test:filter` because it passes `-short`; see the `api-v2-routes` skill) |
+| End-to-end limits through the real router (v2 unauth, BasicAuth budget, token refresh, `/ws`) | `pkg/webtests/unauth_rate_limit_test.go`, `huma_rate_limit_test.go`, `token_refresh_rate_limit_test.go`, `ws_rate_limit_test.go` | `mage test:filter TestV2UnauthRateLimit` (reruns `pkg/webtests` without `-short`) |
 | Expand-scope route list matches registered routes | `pkg/webtests/expand_scope_routes_test.go` | |
 
 Not covered: `matchCORSOrigin` has no test in `pkg/routes` (grep found it only in `routes.go`); `RequireInstanceAdmin` and `gateV2AdminRoutes` are exercised only indirectly through the admin webtests (`pkg/webtests/admin_test.go`, `admin_share_bypass_test.go`, `huma_admin_test.go`, `huma_admin_actions_test.go`, all asserting 404 for non-admins).

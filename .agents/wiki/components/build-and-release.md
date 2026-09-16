@@ -189,7 +189,7 @@ Renovate (`renovate.json`): `config:best-practices` + `config:js-app`; groups `n
 | `pkg/swagger/*` | swaggo comments | `mage generate:swagger-docs` | yes | no; auto-committed by `generate-swagger-and-yaegi` and by `dev:tag-release` |
 | `pkg/yaegi_symbols/*.go` | `yaegiSymbolPackages` | `mage generate:yaegi-symbols` | yes | no; same auto-commit |
 | `config.yml.sample` | `config-raw.json` | `mage generate:config-yaml <bool>` | no (gitignored) | built in `config-yaml`, `release-*` actions |
-| `pkg/routes/api/v2/scalar/scalar.standalone.js` | unpkg pin | `mage generate:scalar-bundle` | yes | no |
+| `pkg/routes/api/v2/scalar/scalar.standalone.js` | unpkg pin | `mage generate:scalarBundle` | yes | no |
 | `*.json` translations except `en.json` | Crowdin | `crowdin.yml` | yes | `check-translations` (en only) |
 | `CHANGELOG.md`, README badge, `publiccode.yml`, `frontend/package.json` version | git history | `mage dev:tag-release` | yes | no |
 | Docker images, zips, deb/rpm/apk/archlinux, repo metadata, desktop installers | above | `release.yml` | no | n/a |

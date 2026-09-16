@@ -75,7 +75,7 @@ Vitest files sit next to the code. Mock the generated client with `vi.mock('@/cl
 ## Commits and reviews
 
 - Conventional Commits; `fix(deps):` is reserved for Renovate. Scope by area: `feat(api-v2): ...`, `fix(caldav): ...`, `docs(wiki): ...`.
-- Lint before committing: `mage lint:fix`, `pnpm lint:fix`, `pnpm lint:styles:fix`.
+- Lint before committing: `mage lint:fix`, `pnpm lint:fix`, and `pnpm lint:styles:fix` when styles changed.
 - Never commit `pkg/swagger/` edits, `config.yml.sample`, `plans/`.
 - Contributions made with AI assistance must say so (`CONTRIBUTING.md`).
 
@@ -84,7 +84,7 @@ Vitest files sit next to the code. Mock the generated client with `vi.mock('@/cl
 - Edit only `frontend/src/i18n/lang/en.json` and `pkg/i18n/lang/en.json`. Never add other languages; Crowdin syncs them nightly.
 - `mage check:translations` fails CI on keys used but missing and keys present but unused. Dynamic keys under `error.` are whitelisted, which is why error-code drift is not caught.
 - Backend strings: `i18n.T(lang, "key", params...)` in notifications and mails.
-- New locales must be added in both `frontend/src/i18n/index.ts` and `pkg/i18n/i18n.go`.
+- New locales must be added in four places: `frontend/src/i18n/index.ts` (`SUPPORTED_LOCALES`), both maps in `frontend/src/i18n/useDayjsLanguageSync.ts` (`DAYJS_LOCALE_MAPPING`, `DAYJS_LANGUAGE_IMPORTS`; a missing key throws at runtime when the locale loads), and `pkg/i18n/i18n.go` (`availableLanguages`).
 
 ## If you change X, you must also change Y
 

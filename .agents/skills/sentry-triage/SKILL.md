@@ -6,7 +6,7 @@ user-invocable: true
 
 # Sentry triage → fix → PR
 
-Survey Sentry, classify, dispatch one subagent per issue cluster (investigate, fix, test, `/open-pr`), then mark issues in Sentry. Derived from a full pass in Sept 2026 (~35 subagents, 33 PRs); the gotchas below are all things that actually bit.
+Survey Sentry, classify, dispatch one subagent per issue cluster (investigate, fix, test, `/open-pr` if that personal skill exists, else `gh pr create`), then mark issues in Sentry. Derived from a full pass in Sept 2026 (~35 subagents, 33 PRs); the gotchas below are all things that actually bit.
 
 ## 0. Preflight (every run)
 

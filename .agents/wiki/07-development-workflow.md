@@ -12,7 +12,7 @@ Setup, build, run, test, lint, generate, debug, and what CI gates. Every command
 | pnpm | 11.26.0 (`frontend/package.json` → `packageManager`) | `corepack enable --install-directory ~/.local/node/bin pnpm`; set `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` |
 | golangci-lint | 2.13.0 (pinned in `magefile.go`, `.github/actions/golangci-lint`, `devenv.nix`) | `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.0` |
 | Playwright browsers | 1.63 | `cd frontend && pnpm exec playwright install chromium` |
-| Optional | `devenv shell` (Nix) or `mise install` give all of the above plus mailpit | not used here |
+| Optional | `devenv shell` (Nix) provides all of the above plus mailpit; `mise install` provides only Node, pnpm, and Go (`mise.toml`) | not used here |
 
 `mage` needs `pnpm`, `go`, and `golangci-lint` on `PATH`. On this machine that means `export PATH=$HOME/.local/go/bin:$HOME/go/bin:$HOME/.local/node/bin:$PATH` in each shell.
 
@@ -134,7 +134,7 @@ Lint before every commit: `mage lint:fix` for Go, `pnpm lint:fix` (+ `pnpm lint:
 | `mage dev:make-migration <Name>` | yes; writes `pkg/migration/<timestamp>.go` with a `partialSync` skeleton |
 | `mage dev:make-event`, `dev:make-listener`, `dev:make-notification` | not run |
 | `mage generate:swagger-docs` | not run; CI regenerates after merge, do not run unless asked |
-| `mage generate:yaegi-symbols`, `check:yaegi-symbols`, `generate:scalar-bundle` | not run |
+| `mage generate:yaegi-symbols`, `check:yaegi-symbols`, `generate:scalarBundle` | not run |
 
 ## Debugging
 

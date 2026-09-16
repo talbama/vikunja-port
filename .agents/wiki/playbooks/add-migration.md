@@ -7,7 +7,7 @@ Schema changes across SQLite, MySQL/MariaDB, and PostgreSQL. The `migration` ski
 | Change | Approach |
 |---|---|
 | Add a column | Local struct with only the new field(s) + `partialSync` |
-| Add a table | Full struct + plain `tx.Sync` (the only case where plain Sync is allowed) + `Rollback` that drops it |
+| Add a table | Full struct + `tx.Sync(...) //nolint:forbidigo // brand-new table, nothing to drop` (the only case where plain Sync is allowed; the lint directive is required) + `Rollback` that drops it |
 | Add a unique index on an existing table | Explicit `CREATE UNIQUE INDEX` per dialect after checking for duplicates; `partialSync` skips unique constraints |
 | Rename or retype a column | `renameColumn` / `modifyColumn` helpers in `pkg/migration/migration.go`, then explicit data migration; `modifyColumn` is a no-op on SQLite, so verify the result on all three |
 | Backfill data | XORM builder queries inside the migration, batched; never raw SQL strings |
@@ -18,7 +18,7 @@ Schema changes across SQLite, MySQL/MariaDB, and PostgreSQL. The `migration` ski
 mage dev:make-migration AddFooToTasks
 ```
 
-Verified output: `pkg/migration/<YYYYMMDDHHMMSS>.go` containing a local struct `AddFooToTasks<ts>` with a `TableName()` and an `init()` that appends an `xormigrate.Migration{ID, Description, Migrate: partialSync(...), Rollback: nil}`.
+Verified output: `pkg/migration/<YYYYMMDDHHMMSS>.go` containing a local struct `AddFooToTasks<ts>` with a `TableName()` and an `init()` that appends an `xormigrate.Migration{ID, Description, Migrate: partialSync(...), Rollback: func(...) error { return nil }}`.
 
 Edit it:
 
@@ -32,7 +32,7 @@ Edit it:
 
 1. Update the struct in `pkg/models/<entity>.go` (or `pkg/user/user.go`): matching `xorm` tag, `json` name, `doc:`/`readOnly:` tags for v2. Mind that xorm orders composite index columns by struct field order.
 2. Update `pkg/db/fixtures/<table>.yml` so every row has the new column where required; tests load these into a schema created from the structs, not from migrations.
-3. If it is a new table: add it to `pkg/models/models.go` → `GetTables()` and create the fixture file.
+3. If it is a new table: add it to `pkg/models/models.go` → `GetTables()`, create the fixture file, and add the table name to the explicit list in `pkg/models/setup_tests.go` → `SetupTests()` (`db.InitTestFixtures(...)`), otherwise model tests see an empty table.
 4. If the field is exposed over the API: `mage generate:frontend-client`; update legacy `frontend/src/modelTypes/I*.ts` and the model class only if legacy code reads the field.
 
 ## 3. Test

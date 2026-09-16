@@ -67,7 +67,7 @@ Webhook delivery: `RegisterEventForWebhook` registers one `WebhookListener` per 
 
 ## Dependencies
 
-- **Uses:** `pkg/user` (`GetFromAuth`, `HashPassword`, `SameBotIdentityCond`, `CreateBotUser`), `pkg/config`, `pkg/events`, `pkg/license`, `pkg/utils` (`CryptoRandomString`, `Sha256Hex`, `NewSSRFSafeHTTPClient`), `pkg/keyvalue` (none here; TOTP/email cooldowns are in `pkg/user`), `golang.org/x/crypto/bcrypt`.
+- **Uses:** `pkg/user` (`GetFromAuth`, `HashPassword`, `SameBotIdentityCond`, `CreateBotUser`), `pkg/config`, `pkg/events`, `pkg/license`, `pkg/utils` (`CryptoRandomString`, `Sha256Hex`, `NewSSRFSafeHTTPClient`), `pkg/modules/keyvalue` (none here; TOTP/email cooldowns are in `pkg/user`), `golang.org/x/crypto/bcrypt`.
 - **Used by:** OpenID/LDAP auth modules (team sync), JWT auth middleware in `pkg/modules/auth` (link share claims), tasks (labels, subscriptions, favorites), listeners (webhooks, team cleanup), MCP and importers (labels).
 
 ## Invariants and assumptions
