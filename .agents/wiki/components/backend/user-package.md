@@ -81,7 +81,7 @@ Disabled and locked users can still be loaded (with a status error) so admins, n
 - Usernames are unique and never `link-share-<n>` or `bot-*` for humans; link shares synthesize `link-share-<id>` (`models.LinkSharing.toUser`).
 - Loaders strip `Email` unless asked; anything that returns users to clients must not re-add it (`ListUsers` only echoes an email the caller searched for exactly).
 - `frontend_settings` is stored as a JSON string produced by `premarshalFrontendSettings`; only `UpdateUser(..., forceOverride=true)` writes it.
-- Token lookups hash the presented value (`utils.Sha256Hex`) and never compare clear text; CalDAV tokens are bcrypt and verified elsewhere (Unverified: exact verifier in `pkg/routes/caldav`).
+- Token lookups hash the presented value (`utils.Sha256Hex`) and never compare clear text; CalDAV tokens are bcrypt and verified in `pkg/routes/caldav/auth.go` (`bcrypt.CompareHashAndPassword` against each token of the user).
 - `CreateUser` callers must not feed the returned `Status` back into `UpdateUser` blindly (comment in `user_create.go`): `status` is in `baseUserUpdateColumns`.
 
 ## Configuration
@@ -104,24 +104,24 @@ Block 1001–1040 in `error.go` (gaps: 1003, 1007, 1032). Note the two prefixes:
 | 1001 / 1002 | `ErrUsernameExists` / `ErrUserEmailExists` | 400 | create, update, email change |
 | 1004 | `ErrNoUsernamePassword` | 400 | also used for empty reset password and bot owner missing |
 | 1005 | `ErrUserDoesNotExist` | 404 | id < 1, empty username, missing row |
-| 1008 / 1009 / 1010 | no / invalid password-reset token, invalid email-confirm token | 400 | |
+| 1008 / 1009 / 1010 | no / invalid password-reset token, invalid email-confirm token | 412 | |
 | 1011 / 1012 | `ErrWrongUsernameOrPassword` / `ErrEmailNotConfirmed` | 403 / 412 | login |
-| 1013 / 1014 | empty new / old password | 400 | |
-| 1015 / 1016 / 1017 / 1037 / 1039 | TOTP already enabled / not enabled / invalid passcode / QR unavailable / passcode reused | | |
-| 1018 | `ErrInvalidAvatarProvider` | | |
-| 1019 / 1038 | OpenID: no email / malformed custom scope | | raised by the openid module |
-| 1020 / 1040 | `ErrAccountDisabled` / `ErrAccountLocked` | | returned by every loader for such users |
-| 1021 | `ErrAccountIsNotLocal` | | password login for OIDC/LDAP users |
-| 1022 / 1026 | username with spaces / reserved | 400 | |
-| 1023 | `ErrMustNotBeLinkShare` | | `GetFromAuth` on a link share |
-| 1024 / 1027 | invalid claim data / invalid user context | 401 for 1027 | JWT parsing |
+| 1013 / 1014 | empty new / old password | 412 | |
+| 1015 / 1016 / 1017 / 1037 / 1039 | TOTP already enabled / not enabled / invalid passcode / QR unavailable / passcode reused | 412 / 412 / 412 / 403 / 412 | |
+| 1018 | `ErrInvalidAvatarProvider` | 412 | |
+| 1019 / 1038 | OpenID: no email / malformed custom scope | 412 | raised by the openid module |
+| 1020 / 1040 | `ErrAccountDisabled` / `ErrAccountLocked` | 412 | returned by every loader for such users |
+| 1021 | `ErrAccountIsNotLocal` | 412 | password login for OIDC/LDAP users |
+| 1022 / 1026 | username with spaces / reserved | 412 / 400 | |
+| 1023 | `ErrMustNotBeLinkShare` | 403 | `GetFromAuth` on a link share |
+| 1024 / 1027 | invalid claim data / invalid user context | 400 / 401 | JWT parsing |
 | 1025 | `ErrInvalidTimezone` | 400 | |
 | 1028 / 1029 | invalid deletion token / token belongs to another user | 400 / 403 | |
-| 1030 | `ErrLastAdmin` | | `GuardLastAdmin` |
-| 1031 / 1033 / 1034 | account is a bot / bot not owned / bot username prefix | | |
-| 1035 / 1036 | no pending email / confirmation resend cooldown | | |
+| 1030 | `ErrLastAdmin` | 400 | `GuardLastAdmin` |
+| 1031 / 1033 / 1034 | account is a bot / bot not owned / bot username prefix | 412 / 403 / 400 | |
+| 1035 / 1036 | no pending email / confirmation resend cooldown | 412 / 429 | |
 
-HTTP status values not listed above were not checked individually (Unverified). `IsErrUserStatusError` groups 1020 and 1040.
+1006 `ErrCouldNotGetUserID` (400) also exists but is not in the table. `IsErrUserStatusError` groups 1020 and 1040.
 
 ## Tests
 
@@ -156,7 +156,7 @@ HTTP status values not listed above were not checked individually (Unverified). 
 - `RouteForMail` and `ShouldNotify` open their own `db.NewSession()` when no session is passed; on SQLite that can deadlock inside a write transaction (the same reason `GetCaldavTokensWithSession` exists).
 - `handleFailedPassword` and `HandleFailedTOTPAuth` read keyvalue counters that come back as `int64` in memory and `string` from Redis; both branches are handled, keep it that way when adding counters.
 - `GetFromAuth` returns `&User{}` plus an error for unknown auth types; callers that ignore the error get a zero-id user.
-- `ListUsers` builds a large `builder.Or`; the `notSomeoneElsesBot` guard must wrap it, not be OR'ed with it (see `TestListUsersFromProject*`).
+- `ListUsers` builds a large `builder.Or`; the `notSomeoneElsesBot` guard must wrap it, not be OR'ed with it (see `TestListUsersFromProject*` in `pkg/models/user_project_test.go` and `project_team_foreign_test.go`).
 - Security history: GHSA-fgfv-pv97-6cmj (TOTP lockout lost on rollback). No `TODO`/`FIXME` in `pkg/user` as of 2026-09-16.
 
 ## Related pages

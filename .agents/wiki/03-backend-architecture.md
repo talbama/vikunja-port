@@ -136,7 +136,7 @@ Verified on 2026-09-16: without a config file the binary logs `service.publicurl
 | Goroutine / mechanism | Where | Notes |
 |---|---|---|
 | Echo server | `pkg/cmd/web.go` | One process; graceful shutdown on signal |
-| Watermill router | `pkg/initialize/init.go` goroutine → `events.InitEvents` | Handlers run concurrently per topic; `events.WaitForPendingHandlers()` drains in tests |
+| Watermill router | `pkg/initialize/init.go` goroutine → `events.InitEvents` | Unverified: handlers run concurrently per topic. `events.WaitForPendingHandlers()` drains in tests |
 | Cron scheduler | `pkg/cron/cron.go` | robfig/cron; jobs run in their own goroutines |
 | Mail daemon | `pkg/mail/mail.go` → `StartMailDaemon` | Channel-fed queue; `SendTestMail` is synchronous |
 | WebSocket hub | `pkg/websocket/hub.go` | Per-connection read/write loops; `PublishForUser` fans out |

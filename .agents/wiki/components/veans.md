@@ -43,7 +43,7 @@ Audience split (`veans/AGENTS.md` "Audience split"): `init` and `login` prompt h
 
 ## Internal structure
 
-Layout: `cmd/veans` (main), `internal/auth` (human login, OAuth), `internal/bootstrap` (init flow, bot user, hook files), `internal/client` (one file per resource: assignees, auth, buckets, comments, discover, info, labels, projects, relations, routes, tasks, tokens, users), `internal/commands` (one cobra command per file + `runtime.go` + `prompt.tmpl`), `internal/config`, `internal/credentials`, `internal/output`, `internal/picker`, `internal/status`, `e2e/`.
+Layout: `cmd/veans` (main), `internal/auth` (human login, OAuth), `internal/bootstrap` (init flow, bot user, hook files), `internal/client` (one file per resource: assignees, auth, buckets, comments, discover, info, labels, projects, relations, routes, tasks, tokens, users), `internal/commands` (one cobra command per file + helpers `runtime.go`, `git.go`, `labels.go` + `prompt.tmpl`), `internal/config`, `internal/credentials`, `internal/output`, `internal/picker`, `internal/status`, `e2e/`.
 
 The workflow the prompt teaches (`prompt.tmpl`, `README.md` "Status model"): `todo` → `veans claim` (`in-progress`) → agent works, keeps the HTML description in sync, comments on decisions → `update -s in-review` with a summary → a human closes (`completed`). Agents never close tasks; abandoning is `--status scrapped --reason`.
 
@@ -89,7 +89,7 @@ Summarised from `veans/AGENTS.md` "Vikunja wire-format gotchas"; read that secti
 | Pagination | tasks/projects/labels/comments/bots are server-paged (50) → `doListAll`; buckets and views return everything → single `doList` (paging duplicates) | `client.go` comments on `doListAll` |
 | Verbs | v2 creates are `POST`, task update is `PATCH` merge-patch, bucket move is `PUT` | `DoMerge`, `MoveTaskToBucket` |
 | Task update body | build from `TaskPatch`; a full `Task` would clobber `done`/`title` (issue #2962) | `UpdateTask` |
-| Search | `q`, not v1's `s` | `ListParams.Q` |
+| Search | `q`, not v1's `s` | `q.Set("q", search)` in `client/labels.go` and siblings (there is no `ListParams` type; `AGENTS.md` is stale there) |
 | Enums | `view_kind` / `bucket_configuration_mode` are strings | `types.go` constants |
 | Bucket membership | `Task.BucketID` is 0; move via `PUT /projects/{p}/views/{v}/buckets/{b}/tasks` `{"task_id":N}` | `buckets.go` |
 | Bots | `POST /user/bots`, username must start with `bot-` | `users.go`, `bootstrap.validateBotUsername` |
@@ -117,7 +117,7 @@ Summarised from `veans/AGENTS.md` "Vikunja wire-format gotchas"; read that secti
 ## Release artifacts
 
 - `release.yml` → `veans-binaries` uses `.github/actions/release-binaries` with `project: veans`: `cd build && mage release:build veans` (xgo matrix, upx, sha256, zip), GPG-signs zips, uploads to S3 `/veans/<tag|unstable>`, stores artifacts `veans_bins` and (tags only) `veans_bin_packages`.
-- `veans-os-package` (matrix rpm/deb/apk/archlinux × amd64/arm64/arm7) uses `release-os-package`: `mage release:prepare-nfpm-config veans <arch>` templates `veans/nfpm.yaml` (`<version>`, `<arch>`, `<binlocation>` → `/usr/local/bin/veans`, license `AGPLv3`), nfpm builds, artifact `veans_os_package_*`, S3 `/veans/...`.
+- `veans-os-package` (matrix rpm/deb/apk/archlinux × amd64/arm64/arm7) uses `release-os-package`: `mage release:prepare-nfpm-config veans <arch>` templates `veans/nfpm.yaml` (`<version>`, `<arch>`, `<binlocation>` as the `src` placeholder → `./veans` by default; `dst` is hard-coded `/usr/local/bin/veans`; license `AGPLv3`), nfpm builds, artifact `veans_os_package_*`, S3 `/veans/...`.
 - `publish-repos` merges `veans_os_package_*` into the same apt/rpm/pacman/apk repos as the server; `create-release` attaches `veans*.zip|rpm|deb|apk|archlinux`. veans has no `LICENSE` file; `build/magefile.go` → `veansProject().OsPackageExtras` copies the root one.
 
 ## Gotchas and tech debt

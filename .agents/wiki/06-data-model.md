@@ -1,6 +1,6 @@
 # Data model
 
-Core entities, where each is defined on every layer, their relationships, lifecycles, and invariants. Table names come from `TableName()` methods; the registration list is `pkg/models/models.go` → `GetTables()` (35 tables) plus `users`, `user_tokens`, `totp`, `files`, `notifications`, `migration_status`, `license_status`.
+Core entities, where each is defined on every layer, their relationships, lifecycles, and invariants. Table names come from `TableName()` methods; the registration list is `pkg/models/models.go` → `GetTables()` (34 tables) plus `users`, `user_tokens`, `totp`, `files`, `notifications`, `migration_status`, `license_status`.
 
 ## Entity relationship diagram
 
@@ -101,7 +101,7 @@ No generator links these. Change both.
 | Bucket configuration mode | `BucketConfigurationModeNone 0`, `Manual 1`, `Filter 2`, serialized as strings | same file |
 | Relation kind | `pkg/models/task_relation.go` (12 values) | `frontend/src/types/IRelationKind.ts` (10 values; no `duplicateof`) |
 | Reminder relative-to | `pkg/models/task_reminder.go`: `due_date`, `start_date`, `end_date` | `frontend/src/types/IReminderPeriodRelativeTo.ts` |
-| Priority | none in Go; plain `int64`, mapped to CalDAV 0–9 in `pkg/caldav/parsing.go` | `frontend/src/constants/priorities.ts` `UNSET 0 … DO_NOW 5` |
+| Priority | none in Go; plain `int64`, mapped to CalDAV 0–9 in `pkg/caldav/priority.go` (`mapPriorityToCaldav`) | `frontend/src/constants/priorities.ts` `UNSET 0 … DO_NOW 5` |
 | Auth type | `user.AuthTypeUser 1`, `auth.AuthTypeLinkShare 2` | `frontend/src/modelTypes/IUser.ts` `AUTH_TYPES` |
 | Pro features | `pkg/license/license.go` `Feature*` | `frontend/src/constants/proFeatures.ts` (`admin_panel`, `time_tracking`, `user_invites`) |
 | Error codes | `ErrCode*` constants | `frontend/src/i18n/lang/en.json` → `error` |

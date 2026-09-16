@@ -27,7 +27,7 @@
 | `Migrator` | `Name()`, `Migrate(*user.User) error`, `AuthURL() string`. The `AuthURL` comment explains the design: OAuth server secrets stay on the API, the frontend only redirects. |
 | `FileMigrator` | `Migrate(u, file io.ReaderAt, size int64)`. `FileValidator.ValidateFile` runs synchronously before the claim so picking the wrong file fails the request (`handler_file.go:66-71`). `FileMigratorOptions.SetOptions([]byte)` carries the CSV mapping through the event payload. `CredentialsChecker.CheckCredentials` (Planka) runs before dispatch so bad logins fail the request, not the job. |
 | `Status` (`migration_status` table) | `user_id`, `migrator_name`, `started_at`, `finished_at` (NULL while running), `error_kind`, `error_message`, `heartbeat_at`, `upload_file_id`, `active_user_id` (**unique**; NULL once finished). Registered in `db.go`, so `models.SetupTests` does not sync it: `main_test.go` calls `x.Sync2(&Status{})` itself. |
-| `ErrorKind` | `reported` (sent to Sentry, generic mail), `interrupted` (stale claim taken over), `credentials`, `queue` (event dispatch failed), `upload` (storing the file failed), `detail` (user's own data; `error_message` holds the English text). Frontend maps these in `frontend/src/stores/migration.ts` → `FAILURE_KEYS`. |
+| `ErrorKind` | `reported` (sent to Sentry, generic mail), `interrupted` (stale claim taken over), `credentials`, `queue` (event dispatch failed), `upload` (storing the file failed), `detail` (user's own data; `error_message` holds the English text). Frontend maps the first five in `frontend/src/stores/migration.ts` → `FAILURE_KEYS`; `detail` (and anything unknown) falls back to `GENERIC_FAILURE_KEY`. |
 | `ClaimMigration` | Up to 5 attempts with backoff. `releaseStaleClaims` marks rows whose `COALESCE(heartbeat_at, started_at)` is older than `migration.claimtimeout` as `interrupted`; then any unfinished row for the user → `ErrMigrationAlreadyRunning` (412, code 14005); then insert with `active_user_id` set. A unique-constraint race is re-read via `claimConflict` so the loser gets 412 instead of 500 (commit `86289e36e`). Note the SQLite timezone binding comment at `migration_status.go:159-161`. |
 | `StartRun(statusID)` | Heartbeat goroutine; interval `clamp(timeout/10, 1s, 30s)`; no-op when the timeout is 0. Returned `stop` is `sync.OnceFunc`. |
 | `insertFromStructureWithFileProvider` | One transaction for the whole import. Loads the importer from the DB (assignee matching needs the stored email), seeds the label dedup map with the user's existing labels keyed `title+normalized hex` (#2742), creates projects first with `parent_project_id` cleared and re-links parents afterwards, applies archived state after creation and cascades it to descendants (commit `5732a435a`), seeds task positions when the export has none (O(n²) otherwise, #3297), creates buckets/views (deleting the auto-generated "To-Do/Doing/Done" buckets when the import brought its own), tasks in one batch with preserved indexes (commit `b263affe9`), relations (self-relations skipped; id-only TickTick parents resolved before title matching), attachments (size taken from the reader, GHSA-qh78-rvg3-cv54), labels, comments. Done tasks moved into imported buckets are re-marked done in bulk. On error: `cleanupAndRollback` deletes blobs written so far (blob ids are reusable after rollback), `events.CleanupPending`; on success `events.DispatchPending`. |
@@ -56,27 +56,14 @@
 sequenceDiagram
     participant UI as Frontend (stores/migration.ts polling)
     participant H as v1/v2 migrate handler
-    participant ST as migration_status
-    participant F as pkg/files
-    participant EV as events bus
     participant L as (File)MigrationListener
     participant I as importer.Migrate
-    participant CS as InsertFromStructure
-    participant N as notifications
     UI->>H: POST /migration/<name>/migrate (code | credentials | multipart "import")
-    H->>H: ValidateFile / CheckCredentials (sync, 400 on failure)
-    H->>ST: ClaimMigration (412 if one is running)
-    H->>F: StoreImportUpload (file importers only)
-    H->>EV: Dispatch migration.requested / migration.file.requested
-    H-->>UI: 200 "Migration was started successfully."
-    EV->>L: Handle
-    L->>ST: GetMigrationStatusByID, StartRun heartbeat
-    L->>I: Migrate(user[, file])
-    I->>CS: InsertFromStructure(tree)
-    CS-->>I: commit or rollback + blob cleanup
-    L->>ST: FinishMigration / FailMigration*
-    L->>N: MigrationDone / MigrationFailed(Reported)
-    L->>F: RemoveImportUpload
+    H->>H: ValidateFile / CheckCredentials (sync, 400) → ClaimMigration (412 if running) → StoreImportUpload (files only)
+    H->>L: Dispatch migration.requested / migration.file.requested; reply 200 "Migration was started successfully."
+    L->>I: GetMigrationStatusByID + StartRun heartbeat, then Migrate(user[, file])
+    I->>I: InsertFromStructure(tree): commit, or rollback + blob cleanup
+    L->>L: FinishMigration / FailMigration*, MigrationDone / MigrationFailed(Reported) mail, RemoveImportUpload
     UI->>H: GET /migration/<name>/status until finished_at is set
 ```
 
@@ -132,7 +119,7 @@ Run: `mage test:filter TestInsertFromStructure`, `mage test:filter TestClaimMigr
 
 ## Gotchas and tech debt
 
-- Hotspot: `create_from_structure.go` has 67 commits, 42 `fix:` (git log 2026-09-16). It is 800 lines with `createProjectWithEverything` alone spanning ~500; test any change against `TestInsertFromStructure` and a real export.
+- Hotspot: `create_from_structure.go` has 67 commits, 42 of them `fix`-typed (mostly scoped, e.g. `fix(migration):`; git log 2026-09-16). It is 800 lines with `createProjectWithEverything` alone spanning ~500; test any change against `TestInsertFromStructure` and a real export.
 - `todoist.go:496` FIXME (notes should become comments).
 - Frontend still uses the legacy service layer for migrations; new work should move to the generated client (see [api-client-generated-and-queries](../frontend/api-client-generated-and-queries.md)).
 - `migrators.ts` still lists `wunderlist`, which no backend importer provides; it is filtered out by `/info`.

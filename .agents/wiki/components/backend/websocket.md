@@ -18,7 +18,7 @@
 | `NewConnection`, `Connection.ReadLoop/WriteLoop/Subscribe/Unsubscribe/IsSubscribed/IsAuthenticated/UserID` | `pkg/websocket/connection.go` | `UpgradeHandler`, tests |
 | `IncomingMessage`, `OutgoingMessage`, `Action*` constants | `pkg/websocket/messages.go` | connection, listeners, tests |
 
-The route is JWT-exempt because the upgrade request cannot carry the token in a header from a browser `WebSocket` and Huma cannot model the endpoint (comment at `routes.go:484-490`); authentication is the first message instead.
+The route is JWT-exempt because the upgrade request cannot carry the token in a header from a browser `WebSocket` and Huma cannot model the endpoint (comment at `routes.go:485-490`); authentication is the first message instead.
 
 ## Key types and functions
 
@@ -64,9 +64,7 @@ sequenceDiagram
     participant L as NotificationListener
     FE->>R: HTTP upgrade
     R->>C: websocket.Accept, start loops, 30 s auth timer
-    FE->>C: {"action":"auth","token"}
-    C->>H: Register(userID)
-    C-->>FE: {"action":"auth.success"}
+    FE->>C: {"action":"auth","token"} → Hub.Register(userID), reply auth.success
     FE->>C: {"action":"subscribe","event":"notification.created"}
     L->>H: PublishForUser(userID, "notification.created", row)
     H-->>C: send chan (drop if full)

@@ -44,7 +44,7 @@ Who the caller is, on every request. Covers the three auth types (user, link sha
 
 1. `SetupTokenMiddleware` is `echojwt` with `service.secret`. Its `Skipper`: route template in `unauthenticatedAPIPaths` → skip; else if any `Authorization: Bearer tk_...` header is present (`models.APITokenAuthorization`) → `checkAPITokenAndPutItInContext`; success skips JWT parsing, failure falls through to the JWT parser which rejects the `tk_` string, so both paths end in 401 code 11.
 2. `checkAPITokenAndPutItInContext`: `auth.ValidateAPITokenString` (read session; `GetTokenFromTokenString`; expiry; owner loaded, disabled/locked owner rejected) → `models.CanDoAPIRoute` unless `shouldSkipRouteCheck` → `c.Set("api_token")`, `c.Set("api_user")` → `models.RecordAPITokenUse` (audit event, skipped for AutoPatch's internal legs).
-3. `shouldSkipRouteCheck`: `/api/v{1,2}/token/test`; anything under `mcp.RoutePrefix` (MCP checks `HasMCPAccess` itself and rejects JWTs, `pkg/modules/mcp/mcp.go:150`); and the AutoPatch GET leg, only when the request is a bare GET with no query string whose `humabridge.InternalDispatchRoute` equals `c.Path()`.
+3. `shouldSkipRouteCheck`: `/api/v{1,2}/token/test`; anything under `mcp.RoutePrefix` (MCP checks `HasMCPAccess` itself and rejects JWTs, `pkg/modules/mcp/mcp.go:159`); and the AutoPatch GET leg, only when the request is a bare GET with no query string whose `humabridge.InternalDispatchRoute` equals `c.Path()`.
 4. `GetAuthFromClaims`: `api_user` from context (avoids two extra lookups per request, commit `912e899c1`) → `api_token` fallback lookup → JWT claims: type 2 with link sharing enabled → `models.GetLinkShareFromClaims` (DB read every call); type 1 → `user.GetUserFromClaims` (builds `User{ID, Username, IsAdmin}` from claims, **no DB**); else 400. Handlers that need the full row call `user.GetUserByID`/`GetFromAuth`.
 
 ### Login → JWT → refresh
@@ -53,20 +53,13 @@ Who the caller is, on every request. Covers the three auth types (user, link sha
 sequenceDiagram
     participant FE as Client
     participant H as v1 Login / v2 authLogin
-    participant S as shared.AuthenticateUserCredentials
-    participant A as auth.IssueUserToken
-    participant DB as sessions table
+    participant A as auth.IssueUserToken / RefreshSession (sessions table)
     FE->>H: POST /login {username,password,totp_passcode?,long_token?}
-    H->>S: resolveLoginUser (LDAP first if enabled, then local) → status gates → enforceLoginTOTP → clear failed counters → commit
-    S-->>H: *user.User or ErrWrongUsernameOrPassword 1011 / ErrInvalidTOTPPasscode 1017 (412) / ErrAccountDisabled 1020 / ErrAccountLocked 1040
-    H->>A: IssueUserToken(ctx, u, UA, IP, long, oidc=nil)
-    A->>DB: CreateSession: uuid id, 128 random bytes → hex refresh token, SHA-256 stored
-    A-->>H: AccessToken (HS256, exp = now + service.jwtttlshort), RefreshToken, CookieMaxAge (jwtttl or jwtttllong)
-    H-->>FE: 200 {"token"} + Set-Cookie vikunja_refresh_token for /api/v1/user/token/refresh and /api/v2/user/token/refresh (HttpOnly; Secure+SameSite=None only on https publicurl, else Lax) + Cache-Control: no-store
-    FE->>H: POST /user/token/refresh (cookie only)
-    H->>A: RefreshSession(cookie)
-    A->>DB: GetSessionByRefreshToken → age check vs LastActive → UpdateSessionLastActive → RotateRefreshToken (UPDATE … WHERE token_hash = old; 0 rows = replay) → GetUserByID
-    A-->>H: RefreshResult{AccessToken, NewRefreshToken, IsLongSession, SessionID}
+    H->>H: shared.AuthenticateUserCredentials: resolveLoginUser (LDAP first if enabled, then local) → status gates → enforceLoginTOTP → commit; errors 1011 / 1017 (412) / 1020 / 1040
+    H->>A: IssueUserToken(ctx, u, UA, IP, long, oidc=nil) → CreateSession: uuid id, 128 random bytes → hex refresh token, SHA-256 stored
+    H-->>FE: 200 {"token"} (HS256, exp = now + jwtttlshort) + Set-Cookie vikunja_refresh_token for both refresh paths (HttpOnly; Secure+SameSite=None only on https publicurl, else Lax; max-age jwtttl or jwtttllong)
+    FE->>H: POST /user/token/refresh (cookie only) → RefreshSession(cookie)
+    A->>A: GetSessionByRefreshToken → age check vs LastActive (expired row deleted) → UpdateSessionLastActive → RotateRefreshToken (UPDATE … WHERE token_hash = old; 0 rows = replay) → GetUserByID
     H-->>FE: 200 {"token"} + rotated cookie; on ErrSessionExpired or user-status error the cookie is cleared (IsUnusableRefreshToken)
 ```
 
@@ -181,7 +174,7 @@ Public v2 ops set `Security: publicSecurity` (empty list, `auth_public.go:36`) *
 | TOTP replay and lockout | `pkg/user/totp_test.go` | `mage test:filter TestHandleFailedTOTPAuth` |
 | HTTP flows: login, refresh, logout, register, reset, link share, sessions, OAuth2, TOTP, CalDAV tokens on both versions | `pkg/webtests/{login,register,token,sessions,link_sharing_auth,oauth2,user_totp,user_password_*}_test.go`, `huma_auth_*_test.go`, `huma_session_test.go`, `huma_caldav_token_test.go`, `huma_user_totp_test.go` | `go test -run TestLogin ./pkg/webtests/` (`mage test:filter` passes `-short`, which skips webtests) |
 
-Gaps: `RefreshSession` concurrency (`ErrRefreshTokenAlreadyUsed`) is covered only at the model level, Unverified whether any webtest races two refreshes; there is no test file for `pkg/routes/api/shared/` itself (its callers are tested).
+Gaps: `RefreshSession` replay (`ErrRefreshTokenAlreadyUsed`, `RotateRefreshToken`'s affected-rows check) has no test at all; the only reference in tests is the classification table in `TestIsUnusableRefreshToken` (grep 2026-09-16); there is no test file for `pkg/routes/api/shared/` itself (its callers are tested).
 
 ## Gotchas and tech debt
 

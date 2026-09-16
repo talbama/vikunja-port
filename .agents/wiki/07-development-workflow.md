@@ -36,8 +36,6 @@ database:
   path: "/absolute/path/for/data/vikunja.db"
 files:
   basepath: "/absolute/path/for/data/files"
-log:
-  level: INFO
 ```
 
 Or pass `--config /path/config.yml`. Every key can be an env var: `VIKUNJA_SERVICE_PUBLICURL`, `VIKUNJA_DATABASE_TYPE`, `VIKUNJA_LOG_DATABASE=stdout VIKUNJA_LOG_DATABASELEVEL=DEBUG` for SQL logging. Generate the documented sample with `mage generate:config-yaml false` (writes the gitignored `config.yml.sample`).

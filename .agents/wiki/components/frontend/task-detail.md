@@ -90,18 +90,14 @@ sequenceDiagram
     participant V as TaskDetailView.saveTask
     participant TS as stores/tasks.update
     participant API as POST /tasks/{id} (TaskService)
-    participant KS as stores/kanban
-    participant L as List / Gantt copies
+    participant KS as stores/kanban + gantt copy
     P->>V: update:modelValue / closeOnChange
-    V->>V: klona(task), hexColor, endDate fallback, canWrite guard
-    V->>TS: update(currentTask)
+    V->>TS: klona(task), hexColor, endDate fallback, canWrite guard; update(currentTask)
     TS->>API: taskService.update
     API-->>TS: updated ITask (camelCase, maxPermission from header)
-    TS->>KS: ensureTaskIsInCorrectBucket(updated) → setTaskInBucket / moveTaskToBucket
-    TS-->>V: updated
-    TS-->>L: lastUpdatedTask (watched by useGanttTaskList)
-    V->>V: Object.assign(task, updated), setActiveFields(), success toast (+undo)
-    Note over L: ProjectList rows are not updated by the store; they refetch on return (keep-alive + useTaskList watcher) or via SingleTaskInProject @taskUpdated
+    TS->>KS: ensureTaskIsInCorrectBucket(updated); lastUpdatedTask (watched by useGanttTaskList)
+    TS-->>V: updated → Object.assign(task, updated), setActiveFields(), success toast (+undo)
+    Note over KS: ProjectList rows are not updated by the store; they refetch on return (keep-alive + useTaskList watcher) or via SingleTaskInProject @taskUpdated
 ```
 
 Labels, assignees, attachments, comments, relations, reactions, subscriptions, and bucket changes do **not** go through `saveTask`; each partial calls its own service or store action and patches `task.value` through `v-model`/emits.

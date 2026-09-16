@@ -1,6 +1,6 @@
 # Cron and background jobs
 
-Everything that runs outside an HTTP request: the robfig/cron scheduler in `pkg/cron`, the fourteen `Register*Cron` jobs wired in `pkg/initialize/init.go` → `FullInit`, and the "event plus listener" pattern that carries long work (imports, exports, webhook deliveries) off the request goroutine. There is no job queue, no persistence and no cross-instance coordination; this page is explicit about what that means. Context: [Backend architecture → Concurrency model](../../03-backend-architecture.md#concurrency-model); bus internals in [events-and-listeners](./events-and-listeners.md).
+Everything that runs outside an HTTP request: the robfig/cron scheduler in `pkg/cron`, the thirteen `Register*Cron` jobs (plus one startup-only cleanup) wired in `pkg/initialize/init.go` → `FullInit`, and the "event plus listener" pattern that carries long work (imports, exports, webhook deliveries) off the request goroutine. There is no job queue, no persistence and no cross-instance coordination; this page is explicit about what that means. Context: [Backend architecture → Concurrency model](../../03-backend-architecture.md#concurrency-model); bus internals in [events-and-listeners](./events-and-listeners.md).
 
 ## Responsibility
 
@@ -14,7 +14,7 @@ Everything that runs outside an HTTP request: the robfig/cron scheduler in `pkg/
 | `cron.Init()` (`c = cron.New(); c.Start()`) | `pkg/cron/cron.go` | `FullInit` before any `Register*Cron` |
 | `cron.Schedule(spec string, f func()) error` (wraps `c.AddFunc`) | `pkg/cron/cron.go` | every `Register*Cron` |
 | `cron.Stop()` | `pkg/cron/cron.go` | `pkg/cmd/web.go:198` on graceful shutdown (after `server.Shutdown`) |
-| `Register*Cron()` (14 calls) | see table | `pkg/initialize/init.go:139-152` |
+| `Register*Cron()` (13 calls, plus the one-shot `openid.CleanupSavedOpenIDProviders()`) | see table | `pkg/initialize/init.go:139-152` |
 | `events.Dispatch`, listeners | `pkg/events`, `pkg/models/listeners.go`, `pkg/modules/migration/handler/listeners.go` | HTTP handlers that hand work off |
 
 That is the whole scheduler API. `cron.New()` is called with no options, so the standard 5-field spec applies (no seconds), each firing runs in its own goroutine, and there is no built-in overlap protection. Unverified: robfig/cron v3 without `cron.WithChain(cron.Recover(...))` does not recover panics, so a panicking job would crash the process; no job in the table below is wrapped.
@@ -119,7 +119,7 @@ See Retry semantics and Observability. Domain errors are not translated anywhere
 
 ## Tests
 
-- Call the extracted body with a fixed `now`: `deleteExpiredTasks(now)` (`pkg/models/task_delete_cron_test.go`), `checkForExpiringAPITokensAt(now)` (`pkg/models/api_tokens_expiry_cron_test.go`, with `notifications.Fake()` + `t.Cleanup(notifications.Unfake)`), `getTasksWithRemindersDueAndTheirUsers` (`task_reminder_test.go`), `getUndoneOverdueTasks` (`task_overdue_reminder_test.go`), `CleanupOldTokens` (`pkg/user/user_test.go`). Jobs whose body is an inline closure (`RegisterSessionCleanupCron`, `RegisterOldExportCleanupCron`, `RegisterAddTaskToFilterViewCron`, the OpenID crons) have no direct unit test; extract the closure into a `func(now time.Time)` before adding one.
+- Call the extracted body with a fixed `now`: `deleteExpiredTasks(now)` (`pkg/models/task_delete_cron_test.go`), `checkForExpiringAPITokensAt(now)` (`pkg/models/api_tokens_expiry_cron_test.go`, with `notifications.Fake()` + `t.Cleanup(notifications.Unfake)`), `getTasksWithRemindersDueAndTheirUsers` (`task_reminder_test.go`), `getUndoneOverdueTasks` (`task_overdue_reminder_test.go`), `CleanupOldTokens` (`pkg/user/user_test.go`). Jobs whose body is an inline closure (`RegisterSessionCleanupCron`, `RegisterOldExportCleanupCron`, `RegisterAddTaskToFilterViewCron`, `RegisterEmptyOpenIDTeamCleanupCron`) have no direct unit test; extract the closure into a `func(now time.Time)` before adding one. `retryUnavailableProviders` is covered by `TestRetryUnavailableProvidersBackoff` (`pkg/modules/auth/openid/status_test.go`); `deleteUsers` and `notifyUsersScheduledForDeletion` have no test either.
 - Listeners: `events.TestListener(t, event, listener)` with `events.Fake()` active; migration listeners in `pkg/modules/migration/handler/{listeners,migration_handler}_test.go` cover claim reuse, panic release, stale events, and failure reporting.
 - Whole pipeline: `pkg/e2etests/integrations.go` → `setupE2ETestEnv` (`InitEventsForTesting`, `events.Unfake()`, `WaitForPendingHandlers` between tests); `pkg/e2etests/user_webhook_test.go` dispatches `TaskReminderFiredEvent`/`TaskOverdueEvent` directly "to simulate the cron" and captures the webhook. Run with `mage test:feature` or `mage test:filter TestUserWebhook`.
 - Nothing tests `pkg/cron` itself or the schedule strings.
@@ -130,7 +130,7 @@ See Retry semantics and Observability. Domain errors are not translated anywhere
 - `RegisterReminderCron`/`RegisterOverdueReminderCron` return early on the first notify error, leaving later users un-notified for that minute.
 - Mixed registration failure policy (`Errorf` vs `Fatalf`) means some jobs can be silently absent after a bad spec edit; there is no startup log of registered jobs.
 - `HandleUserDataExport` is the only heavy listener with automatic retry; a transient failure at the end produces duplicate exports and mails.
-- Every-minute crons (`saved_filters`, OpenID team cleanup, provider retry) run a query per minute per instance even when there is nothing to do.
+- Every-minute crons (`saved_filters`, OpenID team cleanup) run a query per minute per instance even when there is nothing to do; the provider retry returns early from in-memory state (`unavailableProviderKeys`) when every provider is up.
 - No TODO/FIXME comments in the files listed on this page as of 2026-09-16.
 
 ## Related pages

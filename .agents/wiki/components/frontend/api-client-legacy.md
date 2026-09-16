@@ -17,7 +17,7 @@ The v1-era data layer: `AbstractService` subclasses talk to `/api/v1` over axios
 | `IAbstract` (`maxPermission`) | `frontend/src/modelTypes/IAbstract.ts` | every `I*` interface |
 | `frontend/docs/models-services.md` | historical | describes `defaults()` and namespace paths that no longer exist; do not follow it |
 
-Consumers: 83 non-test files import from `@/services/`; 136 import from `@/services/`, `@/models/`, or `@/modelTypes/` (counted with `grep -rl` on 2026-09-16). Stores that hold service instances: `auth`, `base`, `kanban`, `migration`, `projects`, `tasks`, `timeTracking`.
+Consumers: 81 non-test files outside `services/`, `models/`, and `modelTypes/` import from `@/services/`; 133 import from `@/services/`, `@/models/`, or `@/modelTypes/` (counted with `grep -rl` on 2026-09-16). Stores that hold service instances: `auth`, `base`, `kanban`, `migration`, `projects`, `tasks`, `timeTracking`.
 
 ## Key types and functions (`services/abstractService.ts`)
 

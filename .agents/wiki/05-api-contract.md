@@ -55,7 +55,7 @@ sequenceDiagram
 - Refresh token: stored hashed in `sessions` (`pkg/models/sessions.go`), delivered as one HttpOnly cookie **per refresh endpoint path** so the long-lived token is not sent on every request. `SameSite=None` only when the public URL is https.
 - Middleware: `pkg/routes/api_tokens.go` → `SetupTokenMiddleware()` validates JWTs, or an `Authorization: Bearer tk_...` API token, and skips paths in `unauthenticatedAPIPaths` (`pkg/routes/routes.go`). Invalid or missing credentials return `401 {"code":11,"message":"missing, malformed, expired or otherwise invalid token provided"}` on both versions.
 - Link shares: `POST /api/v{1,2}/shares/:share/auth` (optional password) returns a JWT with `type: 2`; the frontend keeps it in memory per tab.
-- API tokens: `tk_` prefixed, SHA-256 stored, scoped by `(group, permission)` derived from route paths (`pkg/models/api_routes.go` → `getRouteGroupName`; `POST /api/v2/tasks/{id}/duplicate` becomes group `tasks`, permission `duplicate`). v1 and v2 share keys because create/update verbs are normalized. PATCH is accepted as an alias for the stored PUT. AutoPatch's internal GET leg inherits the PATCH authorization (`shouldSkipRouteCheck`).
+- API tokens: `tk_` prefixed, SHA-256 stored, scoped by `(group, permission)` derived from route paths (`pkg/models/api_routes.go` → `getRouteGroupName`; `POST /api/v2/tasks/{task}/duplicate` becomes group `tasks`, permission `duplicate`). v1 and v2 share keys because create/update verbs are normalized. PATCH is accepted as an alias for the stored PUT. AutoPatch's internal GET leg inherits the PATCH authorization (`shouldSkipRouteCheck`).
 - OIDC: `/api/v{1,2}/auth/openid/:provider/callback`; providers from config; LDAP via `pkg/modules/auth/ldap`. TOTP is enforced inside `pkg/routes/api/shared/auth.go` → `AuthenticateUserCredentials`.
 - Vikunja as OAuth2 server for desktop/agent clients: `/oauth/authorize` (frontend route + `pkg/modules/auth/oauth2server`), `POST /api/v2/oauth/token` (JSON or form encoded, PKCE required).
 
@@ -81,7 +81,7 @@ Rules that follow from the code:
 
 - A nonexistent id returns **403, not 404**, on both versions when the caller cannot prove access (`handler.ErrReadForbidden`). Real 404s come from explicit `ErrXDoesNotExist` errors raised inside model methods.
 - v2 5xx bodies never include the underlying error text; it is logged instead (`init()` in `errors.go` replaces `huma.NewError`).
-- The numeric `code` is the frontend's translation key: `frontend/src/message/index.ts` looks up `error.<code>` in `src/i18n/lang/en.json`. Adding a domain error means adding both the Go constant and the `en.json` entry. 56 Go codes currently have no frontend string (see [Known issues](13-known-issues.md)).
+- The numeric `code` is the frontend's translation key: `frontend/src/message/index.ts` looks up `error.<code>` in `src/i18n/lang/en.json`. Adding a domain error means adding both the Go constant and the `en.json` entry. 56 Go codes currently have no frontend string (162 unique `ErrCode*`/`ErrorCode*` constants vs 107 numeric `error.*` keys, counted 2026-09-16; the count includes `ErrorCodeGenericForbidden`, whose Go literal `0001` is the number 1 while the JSON key is the string `"0001"`, so it never matches) (see [Known issues](13-known-issues.md)).
 - `i18n_params` on the error carries values for placeholders in that string.
 
 ## Realtime and other channels
@@ -120,7 +120,9 @@ curl -s -X POST http://localhost:3456/api/v1/register -H 'Content-Type: applicat
 curl -s -c cookies.txt -X POST http://localhost:3456/api/v1/login -H 'Content-Type: application/json' \
   -d '{"username":"wiki","password":"wikipass123"}'
 # {"token":"eyJ..."}
+```
 
+```bash
 curl -s -X POST http://localhost:3456/api/v2/labels -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -d '{"title":"wiki-label"}'
 # 201 {"id":1,"title":"wiki-label",...,"created_by":{...}}

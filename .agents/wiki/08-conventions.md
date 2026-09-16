@@ -15,7 +15,7 @@ Coding style on each side, patterns to copy and to avoid (each with a real examp
 
 ### Data access
 
-- **No raw SQL**, including migrations and tests. Use the XORM session and `xorm.io/builder`: `s.Where(builder.In("id", ids))`, `s.Cols("done").Update(t)`. Never `s.Exec`, `s.Query`, or `builder.Expr` with hand-built strings. A handful of grandfathered exceptions exist (`pkg/models/project_access.go` permission CTE, `subscription.go` recursive CTE, `project_repair.go`, `task_position.go`, `task_search.go`, `teams.go`); do not add to them without a reason a reviewer will accept.
+- **No raw SQL**, including migrations and tests. Use the XORM session and `xorm.io/builder`: `s.Where(builder.In("id", ids))`, `s.Cols("done").Update(t)`. Never `s.Exec`, `s.Query`, or `builder.Expr` with hand-built strings. A handful of grandfathered exceptions exist (`pkg/models/project_access.go` permission CTE, `subscription.go` recursive CTE, `project_repair.go`, `task_position.go`, `task_search.go`, `teams.go`, plus `s.Exec` in `kanban_task_bucket.go` and `project_view.go` and a `builder.Expr("1 = 1")` seed in `project.go`); do not add to them without a reason a reviewer will accept.
 - **`builder.In("col")` with no arguments is dropped by `Where` and matches every row.** Pass an empty typed slice (`[]int64{}`) to get `0=1`. Example of the safe form: `pkg/models/project.go` around line 592 (`builder.In("id", ids)` where `ids` is always a slice).
 - Models receive `s *xorm.Session` and never commit. Reads inside a request reuse the session's memo (`db.Remember`); do not replace the session context yourself (`db.SetSessionContext`).
 - Migrations: `partialSync` for existing tables, plain `tx.Sync` only for brand-new tables, every DDL error returned, cross-DB checked. Details in [db-and-migrations](components/backend/db-and-migrations.md) and the `migration` skill.
@@ -105,6 +105,6 @@ Vitest files sit next to the code. Mock the generated client with `vi.mock('@/cl
 | Add an importer | `pkg/modules/migration/<name>/`, v2 wiring in `pkg/routes/api/v2/migration_{oauth,credentials,file,csv}.go` (v1 `registerMigrations` only for existing importers), `/info` advertising, `frontend/src/views/migrate/migrators.ts`, i18n keys | UI does not offer it |
 | Change the OpenAPI shape of an exported package | `pkg/yaegi_symbols` regeneration (CI does it), veans `internal/client/types.go` | Plugins or the CLI break |
 | Add a pro feature | `pkg/license` `Feature*`, `RequireFeature` on routes, `enabled_pro_features` in `/info`, `frontend/src/constants/proFeatures.ts`, router `meta` guard | Feature visible without license or hidden with one |
-| Add a locale | `frontend/src/i18n/index.ts`, `useDayjsLanguageSync.ts`, `pkg/i18n/i18n.go`, Crowdin | Language not selectable or rejected by validation |
+| Add a locale | `frontend/src/i18n/index.ts`, `frontend/src/i18n/useDayjsLanguageSync.ts`, `pkg/i18n/i18n.go`, Crowdin | Language not selectable or rejected by validation |
 | Add a keyboard shortcut | `frontend/src/constants/shortcuts.ts` and the help overlay list | Undocumented shortcut |
 | Change `frontend/index.html`'s inline `window.*` script | `desktop/build.js` `API_URL_SCRIPT_RE`, the template in `pkg/routes/static.go` → `serveIndexFile` (injects `SENTRY_*` and `CUSTOM_LOGO_URL*`) | Desktop build or served index breaks |

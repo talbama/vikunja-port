@@ -74,7 +74,7 @@ Topic strings are the `Name()` return values. All in `pkg/models/events.go` unle
 | `pkg/modules/migration/handler/events.go` | `migration.requested`, `migration.file.requested` (carry `MigrationStatusID`) |
 | `pkg/initialize/events.go` | `booted` |
 
-Topics with no listener when webhooks and audit are off: `task.positions.recalculated`, `team.created`, `team.deleted`, every `api-token.*`, `admin.*`, `user.*` and `booted`. They exist for the audit catalog.
+Topics with no listener when webhooks and audit are off: `task.positions.recalculated`, `task.reminder.fired`, `task.overdue`, `tasks.overdue`, `project.updated`, `project.deleted`, `project.shared.*`, `team.created`, `team.deleted`, every `api-token.*`, `admin.*`, `user.*` and `booted`. They exist for the audit catalog (the reminder topics only for webhooks).
 
 ## Listener registry (`pkg/models/listeners.go` → `RegisterListeners`)
 
@@ -105,7 +105,7 @@ Topics with no listener when webhooks and audit are off: `task.positions.recalcu
 
 ### Audit catalog (`registerEventsForAuditLogging`, when `audit.enabled`)
 
-`audit.RegisterEventForAudit[T](toEntry func(*T) *audit.Entry)` (`pkg/audit/listener.go`) derives the topic from a zero `T`, registers a listener named `audit`, checks `license.IsFeatureEnabled(license.FeatureAuditLogs)` per message, unmarshals into a fresh `T`, skips on nil entry, enriches IP/user agent/request id from message metadata (source type `http` if any present, else `system`), and calls `WriteAuditEvent`. The block in `pkg/models/listeners.go:101-430` is the complete audited surface: auth (`user.login.*`, `user.logout`, `api-token.*`, `user.created`, `user.export.requested`), all task mutation topics, project CRUD and shares, team CRUD and membership, and every `admin.*` topic. An event not listed there is not audited.
+`audit.RegisterEventForAudit[T](toEntry func(*T) *audit.Entry)` (`pkg/audit/listener.go`) derives the topic from a zero `T`, registers a listener named `audit`, checks `license.IsFeatureEnabled(license.FeatureAuditLogs)` per message, unmarshals into a fresh `T`, skips on nil entry, enriches IP/user agent/request id from message metadata (source type `http` if any present, else `system`), and calls `WriteAuditEvent`. The block in `pkg/models/listeners.go:101-428` is the complete audited surface: auth (`user.login.*`, `user.logout`, `api-token.*`, `user.created`, `user.export.requested`), all task mutation topics, project CRUD and shares, team CRUD and membership, and every `admin.*` topic. An event not listed there is not audited.
 
 ### Other registrars
 
@@ -131,7 +131,7 @@ Topics with no listener when webhooks and audit are off: `task.positions.recalcu
 |---|---|---|
 | `log.events`, `log.eventslevel` | `VIKUNJA_LOG_EVENTS`, `VIKUNJA_LOG_EVENTSLEVEL` | Watermill logger output (`off` by default) |
 | `webhooks.enabled` (default true), `webhooks.timeoutseconds` (30) | `VIKUNJA_WEBHOOKS_*` | Whether webhook listeners are registered; HTTP timeout |
-| `audit.enabled` (default false) | `VIKUNJA_AUDIT_ENABLED` | Registers audit listeners and the `RequestMeta` middleware (`pkg/routes/routes.go:196`) |
+| `audit.enabled` (default false) | `VIKUNJA_AUDIT_ENABLED` | Registers audit listeners and the `RequestMeta` middleware (`pkg/routes/routes.go:194`) |
 | `sentry.enabled` | `VIKUNJA_SENTRY_ENABLED` | Poisoned messages are captured |
 | `metrics.enabled` | `VIKUNJA_METRICS_ENABLED` | Exposes the registry the router metrics are attached to |
 
@@ -153,7 +153,7 @@ Topics with no listener when webhooks and audit are off: `task.positions.recalcu
 
 - Double registration stacks handlers: `RegisterListener` appends, so calling `RegisterListeners()` twice in one process runs every listener twice (e2e tests guard with `registerListenersOnce`). Unverified: whether Watermill panics on the duplicate handler name before that happens.
 - `WebhookListener.Name()` is the constant `webhook.listener`; uniqueness of the router handler name comes only from the topic prefix.
-- `HandleTaskUpdateLastUpdated` is registered on ten topics and silently returns on payloads without `task.id`; an event whose task field is not named `task` is ignored without error.
+- `HandleTaskUpdateLastUpdated` is registered on nine topics and silently returns on payloads without `task.id`; an event whose task field is not named `task` is ignored without error.
 - `BootedEvent` is effectively dead code because of the blocking `InitEvents` (see Startup ordering).
 - `Dispatch` from cron code carries no request metadata, so audit entries from crons have `SourceSystem`; that is by design but easy to mistake for a bug.
 - No TODO/FIXME comments exist in `pkg/events`, `pkg/models/events.go`, `pkg/models/listeners.go` or `pkg/audit` as of 2026-09-16.

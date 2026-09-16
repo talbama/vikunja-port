@@ -99,7 +99,7 @@ Holds only the currently displayed board. State: `buckets: IBucket[]`, `projectI
 
 ### `auth` (one paragraph)
 
-`src/stores/auth.ts` owns `authenticated`, `needsTotpPasscode`, `info`, `settings`, `currentSessionId`, and the actions `login`, `register`, `registerWithInvite`, `openIdAuth`, `handleDesktopOAuthTokens`, `linkShareAuth`, `checkAuth`, `refreshUserInfo`, `verifyEmail`, `saveUserSettings`, `renewToken`, `logout`. Other stores read `settings.timezone`, `settings.frontendSettings.*` (quick-add mode, default reminders, comment sort order, default view) and `info.id`. `logout` calls `clearTaskCache()` and must not `router.push` before an OIDC redirect (comment in the file). Everything else, including the refresh retry (`refreshTokenWithRetry`) and `JUST_LOGGED_OUT_KEY`, is in [auth-and-session](./auth-and-session.md).
+`src/stores/auth.ts` owns `authenticated`, `needsTotpPasscode`, `info`, `settings`, `currentSessionId`, and the actions `login`, `register`, `registerWithInvite`, `openIdAuth`, `handleDesktopOAuthTokens`, `linkShareAuth`, `checkAuth`, `refreshUserInfo`, `verifyEmail`, `saveUserSettings`, `renewToken`, `logout`. Other stores read `settings.timezone`, `settings.frontendSettings.*` (quick-add mode, default reminders, comment sort order, default view) and `info.id`. `logout` clears the task cache and query cache indirectly (its `setUser(null)` fires the store's sync identity watcher, which calls `clearTaskCache()` and `queryClient.clear()`) and must not `router.push` before an OIDC redirect (comment in the file). Everything else, including the refresh retry (`refreshTokenWithRetry`) and `JUST_LOGGED_OUT_KEY`, is in [auth-and-session](./auth-and-session.md).
 
 ## Internal structure
 
@@ -110,12 +110,11 @@ flowchart LR
     project -->|setCurrentProject mirror| base
     task -->|patch board copies| kanban
     task -->|findProjectByExactname| project
-    task -->|settings| auth
+    task & timeTracking -->|settings / info.id| auth
     task -->|concurrentWrites| config
     kanban -->|currentProject.views / viewId| base
     kanban -->|setProjectView on bucket delete| project
     migration -->|loadAllProjects| project
-    timeTracking -->|info.id| auth
     timeTracking --> ws[useWebSocket]
 ```
 

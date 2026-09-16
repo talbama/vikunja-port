@@ -16,7 +16,7 @@
 | `plugins.Shutdown()` | `manager.go` | `pkg/cmd/web.go:200` on graceful shutdown |
 | `plugins.RegisterPluginRoutes(auth, unauth *echo.Group)` | `manager.go` | `pkg/routes/routes.go:996-1005` |
 | `plugins.YaegiPluginLoader` (function var), `LoadedYaegiPlugin` | `manager.go` | set by `pkg/plugins/yaegi` `init()`; `pkg/initialize/init.go:41` blank-imports the package to register it |
-| `yaegi.LoadPlugin(dir)`, `yaegi.LoadPluginFull(dir)` | `pkg/plugins/yaegi/loader.go` | `Manager.loadYaegiPlugin`, tests |
+| `yaegi.LoadPlugin(dir)`, `yaegi.LoadPluginFull(dir)` | `pkg/plugins/yaegi/loader.go` | `Manager.loadYaegiPlugin` reaches `LoadPluginFull` through the `YaegiPluginLoader` var (`manager.go:176`); `LoadPlugin` only has test callers |
 | `yaegi_symbols.Symbols` | `pkg/yaegi_symbols/symbols.go` | `LoadPluginFull` → `interp.Use` |
 | `migration.AddPluginMigrations(ms)` | `pkg/migration/migration.go:44` | `Manager.loadNativePlugin`, `loadYaegiPlugin` |
 | `Registry` (`NewRegistry`, `Add`, `All`) | `pkg/plugins/registry.go` | No caller in `pkg/` (grep 2026-09-16); only exported into `yaegi_symbols`. `Manager` keeps its own slices |
@@ -105,7 +105,7 @@ Run `mage test:filter TestLoadPluginFull`. `pkg/plugins` itself has no `_test.go
 ## Gotchas and tech debt
 
 - Native plugins are effectively unusable across builds: Go's `plugin` package requires identical toolchain and dependency versions. This is why yaegi exists and why the config comment deprecates `native`.
-- Changing the exported surface of any package in `yaegiSymbolPackages` (adding a function to `pkg/models`, bumping Echo) makes the generated files stale; CI regenerates on release and lint excludes `pkg/yaegi_symbols/..*` and `plugins-dev/..*` (`.golangci.yml:222-223`, formatters at 234). `plugins/` and `plugins-dev/` are gitignored.
+- Changing the exported surface of any package in `yaegiSymbolPackages` (adding a function to `pkg/models`, bumping Echo) makes the generated files stale; CI regenerates on release and lint excludes `pkg/yaegi_symbols/..*` and `plugins-dev/..*` (`.golangci.yml:222-223`; the formatters exclusion at 234 lists only `pkg/yaegi_symbols/..*`). `plugins/` and `plugins-dev/` are gitignored.
 - `pkg/yaegi_symbols/*.go` are large generated files (`xorm.go` 831 lines, `vikunja_models.go` 687); never hand-edit except `symbols.go`.
 - `Registry` in `registry.go` appears unused by `Manager` (which keeps plain slices); treat it as dead code until a caller appears.
 - `Initialize` runs `migration.Migrate(nil)` again when any migration plugin is present, which re-opens a DB engine; harmless but slow on large databases (Unverified: cost).

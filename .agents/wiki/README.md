@@ -112,6 +112,6 @@ Rules of the road live in `AGENTS.md` and `.agents/docs/`; skills in `.agents/sk
 ## Keeping this wiki current
 
 - Before changing a component, read its page. After changing it, update the page in the same commit.
-- Add a row to the relevant tables here when you add a page.
+- New component pages follow [components/_template.md](components/_template.md). Add a row to the relevant table here when you add a page.
 - Prefer pointing at code over pasting it. If you paste, keep it under ten lines.
 - Mark anything you did not verify as "Unverified:" rather than leaving it out or guessing.

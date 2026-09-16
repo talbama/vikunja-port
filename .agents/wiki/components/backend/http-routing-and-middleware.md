@@ -15,10 +15,10 @@ The Echo layer that turns a TCP connection into a call on a v1 `WebHandler` or a
 | `RegisterRoutes(e)` | `pkg/routes/routes.go` | same |
 | `SetupTokenMiddleware()` | `pkg/routes/api_tokens.go` | `registerAPIRoutes`, `registerAPIRoutesV2` |
 | `RateLimit(limiter, kind)`, `setupRateLimit`, `unauthRateLimit`, `tokenRefreshRateLimit`, `basicAuthRateLimit` | `pkg/routes/rate_limit.go` | `RegisterRoutes`, both `registerAPIRoutes*` |
-| `RequireFeature(f)`, `RequireInstanceAdmin()` | `pkg/routes/feature_gate.go`, `pkg/routes/admin_gate.go` | v1 `/admin` group (`routes.go:973`), `gateV2AdminRoutes` |
+| `RequireFeature(f)`, `RequireInstanceAdmin()` | `pkg/routes/feature_gate.go`, `pkg/routes/admin_gate.go` | v1 `/admin` group (`routes.go:974`), `gateV2AdminRoutes` |
 | `ResolveProjectIdentifier()` | `pkg/routes/resolve_project.go` | only `GET /api/v1/projects/:project/tasks/by-index/:index` (`routes.go:710`) |
 | `CreateHTTPErrorHandler(e, sentry)` | `pkg/routes/error_handler.go` | `NewEcho` |
-| `SentryMiddleware`, `GetSentryHubFromContext`, `GetSentryHubFromRequest` | `pkg/routes/sentry_middleware.go` | `setupSentry`, `reportToSentry`, v2 error bridge |
+| `SentryMiddleware`, `GetSentryHubFromContext`, `GetSentryHubFromRequest` | `pkg/routes/sentry_middleware.go` | `setupSentry`, `reportToSentry`; `GetSentryHubFromRequest` has no caller under `pkg/` (grep 2026-09-16) |
 | `CustomValidator` | `pkg/routes/validation.go` | `e.Validator`; the v2 `Register` wrapper runs govalidator too (`pkg/routes/api/v2/huma.go` comment) |
 | `HealthcheckHandler`, `ChangePasswordRedirect` | `pkg/routes/healthcheck.go`, `pkg/routes/change_password.go` | `/health`, `/.well-known/change-password` |
 | `NormalizeArrayParams()`, `RequestMeta()` | `pkg/routes/middleware/` | `NewEcho` |
@@ -46,25 +46,16 @@ The Echo layer that turns a TCP connection into a call on a v1 `WebHandler` or a
 
 ```mermaid
 flowchart TB
-    subgraph global["NewEcho() — e.Use, in order"]
-        R[RequestID] --> L["RequestLogger (if log.http != off)"] --> RC[Recover] --> N[NormalizeArrayParams] --> M["RequestMeta (if audit.enabled)"] --> S["SentryMiddleware (if sentry.enabled)"] --> B["BodyLimit(maxfilesize+2MB)"]
-    end
-    subgraph reg["RegisterRoutes() — e.Use, in order"]
-        G["Gzip (skip /api/)"] --> ST["static() (skip /api/; SPA fallback)"] --> C["CORS (if cors.enable; skip /dav, /feeds)"]
-    end
-    B --> G
-    C --> WK["/.well-known/caldav: basicAuthRateLimit → BasicAuth(caldav)"]
-    C --> DAV["/dav: basicAuthRateLimit → BasicAuth(caldav)"]
-    C --> F["/feeds: basicAuthRateLimit → BasicAuth(feeds)"]
-    C --> H["/health, /.well-known/change-password"]
-    C --> P["/debug/pprof (metrics.pprof, optional BasicAuth)"]
+    G["NewEcho() e.Use: RequestID → RequestLogger (log.http != off) → Recover → NormalizeArrayParams → RequestMeta (audit.enabled) → SentryMiddleware (sentry.enabled) → BodyLimit(files.maxsize+2MB)"]
+    G --> C["RegisterRoutes() e.Use: Gzip (skip /api/) → static() (skip /api/; SPA fallback) → CORS (cors.enable; skip /dav, /feeds)"]
+    C --> BA["/.well-known/caldav, /dav, /feeds: basicAuthRateLimit → BasicAuth(caldav | feeds)"]
+    C --> H["/health, /.well-known/change-password, /debug/pprof (metrics.pprof, optional BasicAuth)"]
     C --> V1["/api/v1: noStoreCacheControl"]
     C --> V2["/api/v2: noStoreCacheControl → SetupTokenMiddleware → pathScoped refresh limit → pathScoped noauth limit → global RateLimit → metrics mw → gateV2AdminRoutes → Huma"]
-    V1 --> N1["sub-group n: RateLimit(ip) if enabled — docs, /ws, /metrics, /test/*, /info, plugins"]
-    V1 --> UR["sub-group ur: unauthRateLimit — register, password token/reset, confirm, login, openid callback, shares/:share/auth"]
-    V1 --> TR["sub-group tr: tokenRefreshRateLimit — /user/token/refresh, /oauth/token"]
-    V1 --> A["a.Use: SetupTokenMiddleware → RateLimit(kind) → metrics mw → all authenticated v1 routes"]
-    A --> ADM["/admin: RequireFeature(admin_panel) → RequireInstanceAdmin"]
+    V1 --> N1["n: RateLimit(ip) if enabled — docs, /ws, /metrics, /test/*, /info, plugins"]
+    V1 --> UR["ur: unauthRateLimit — register, password token/reset, confirm, login, openid callback, shares/:share/auth"]
+    V1 --> TR["tr: tokenRefreshRateLimit — /user/token/refresh, /oauth/token"]
+    V1 --> A["a.Use: SetupTokenMiddleware → RateLimit(kind) → metrics mw → authenticated v1 routes → /admin: RequireFeature(admin_panel) → RequireInstanceAdmin"]
 ```
 
 Order facts that matter (all `pkg/routes/routes.go` unless noted):
@@ -81,7 +72,7 @@ Order facts that matter (all `pkg/routes/routes.go` unless noted):
 
 | Limiter | Prefix | Key | Budget | Applies to | Honors `ratelimit.enabled`? |
 |---|---|---|---|---|---|
-| `setupRateLimit(group, kind)` | `global` | `ip` → `RealIP()`; `user` → `user_<id>` or `ip_<ip>`; unknown kind → logs error, uses ip | `ratelimit.limit` per `ratelimit.period` s (100/60) | v1 `n` sub-group (always `ip`), v1 authenticated group, whole v2 group | yes (off by default) |
+| `setupRateLimit(group, kind)` | `global` | `ip` → `RealIP()`; `user` → `user_<id>` or `ip_<ip>`; unknown kind → logs error, uses `ip_<ip>` | `ratelimit.limit` per `ratelimit.period` s (100/60) | v1 `n` sub-group (always `ip`), v1 authenticated group, whole v2 group | yes (off by default) |
 | `unauthRateLimit` | `noauth` | ip | `ratelimit.noauthlimit`/min (10) | v1 `ur`, v1 and v2 `/ws`, `v2CredentialPaths` | **no** (`perMinuteIPRateLimit` comment: pre-auth routes need a floor) |
 | `tokenRefreshRateLimit` | `tokenrefresh` | ip | `ratelimit.tokenrefreshlimit`/min (60) | v1 `tr`, `v2SessionRenewalPaths` (`/user/token/refresh`, `/oauth/token`) | no |
 | `basicAuthRateLimit` | `basicauth` | `ip:<window>` | `ratelimit.basicauthlimit`/min (10) | `/.well-known/caldav`, `/dav`, `/feeds`, `/api/v2/notifications.atom` | no |
@@ -114,7 +105,7 @@ Returns early if the response is already committed. Then, on the original error:
 - `RequestMeta` (`middleware/request_meta.go`): only when `audit.enabled`; stashes IP, User-Agent and `X-Request-Id` via `events.WithRequestMeta` so `DispatchWithContext` carries them.
 - `CustomValidator` (`validation.go`): govalidator; failures become `models.InvalidFieldError` (412, code 2002, `invalid_fields`). Custom tags: `time` (`15:04`), `dbtext` (65 000 chars on MySQL/unknown, 1 MiB on postgres/sqlite3).
 - `RequireFeature` returns `echo.ErrNotFound` (404, not 403) so gated routes are indistinguishable from unregistered ones. `RequireInstanceAdmin` also 404s, re-reads `is_admin` from the DB (a demoted admin's JWT still says `is_admin: true`), closes the session before `next()` (SQLite deadlock), and dispatches `models.AdminAccessDeniedEvent` only for a confirmed non-admin user (not for link shares or missing claims).
-- `ResolveProjectIdentifier`: `:project` that is not all digits is looked up by upper-cased `identifier` and rewritten to the numeric id; digit-only identifiers are therefore unreachable through this route (documented in the code). v2 handles the same case inside `pkg/routes/api/v2/tasks.go` (comment at line 302).
+- `ResolveProjectIdentifier`: `:project` that is not all digits is looked up by upper-cased `identifier` and rewritten to the numeric id; digit-only identifiers are therefore unreachable through this route (documented in the code). v2 handles the same case inside `pkg/routes/api/v2/tasks.go` (`resolveProjectIdentifier`, comment at line 299).
 - `HealthcheckHandler`: `health.Check()` pings the DB and, when `redis.enabled`, Redis; returns `OK` or 500.
 - `setupMetrics`: `/api/v1/metrics` in the unauthenticated `n` sub-group when `metrics.enabled`; BasicAuth with constant-time compare only if both `metrics.username` and `metrics.password` are set. `setupPprof`: `/debug/pprof/{cmdline,profile,symbol,trace,/,*}` on the root Echo when `metrics.enabled && metrics.pprof`, same optional BasicAuth, explicit handlers rather than the `net/http/pprof` blank import (which would register on `DefaultServeMux`). `setupMetricsMiddleware` bumps the active-user/link-share gauges when `auth2.HasAuthInContext`.
 - `/.well-known/change-password` → 302 to `<publicurl>user/settings/password-update` (W3C change-password URL).
@@ -122,7 +113,7 @@ Returns early if the response is already committed. Then, on the original error:
 ## Dependencies
 
 - **Uses:** `pkg/config`, `pkg/log`, `pkg/license`, `pkg/health`, `pkg/metrics`, `pkg/red`, `pkg/events`, `pkg/errorreport`, `pkg/models` (route collection, `AdminAccessDeniedEvent`, `Project` lookup), `pkg/modules/auth` (`HasAuthInContext`, `GetAuthFromClaims`), `pkg/modules/humabridge`, `pkg/modules/mcp`, `pkg/web` (`HTTPErrorProcessor`), `frontend` (embedded `dist/`), `github.com/ulule/limiter/v3`, `github.com/labstack/echo/v5`, `github.com/labstack/echo-jwt/v5`, `github.com/getsentry/sentry-go`, `github.com/hhsnopek/etag`.
-- **Used by:** `pkg/cmd/web.go` (serves), `pkg/webtests/integrations.go` (`setupTestEnv` builds the real Echo), `pkg/routes/api/v2/errors.go` (Sentry hub from request).
+- **Used by:** `pkg/cmd/web.go` (serves), `pkg/webtests/integrations.go` (`setupTestEnv` builds the real Echo). `pkg/routes/api/v2/errors.go` does not touch the Sentry hub; 5xx logging there is plain `log.Errorf`.
 
 ## Invariants and assumptions
 
@@ -140,7 +131,7 @@ Returns early if the response is already committed. Then, on the original error:
 |---|---|---|
 | `service.ipextractionmethod` (`direct`) / `service.trustedproxies` | `VIKUNJA_SERVICE_IPEXTRACTIONMETHOD` / `..._TRUSTEDPROXIES` | `xff`, `realip` or direct; comma-separated CIDRs trusted for proxy headers |
 | `service.publicurl` | `VIKUNJA_SERVICE_PUBLICURL` | Injected into `index.html` as the API base; appended to CORS origins at config load (`config.go:830`); change-password redirect target |
-| `service.maxfilesize` | `VIKUNJA_SERVICE_MAXFILESIZE` | `BodyLimit` = value + 2 MB |
+| `files.maxsize` (via `config.GetMaxFileSizeInMBytes()`) | `VIKUNJA_FILES_MAXSIZE` | `BodyLimit` = value + 2 MB |
 | `service.customlogourl`, `service.customlogourldark`, `sentry.frontendenabled`, `sentry.frontenddsn` | `VIKUNJA_SERVICE_CUSTOMLOGOURL` … | Values injected into the index script tag (read once) |
 | `sentry.enabled`, `sentry.dsn` | `VIKUNJA_SENTRY_ENABLED`, `VIKUNJA_SENTRY_DSN` | Sentry middleware and 5xx reporting |
 | `log.http` (`off` disables), `log.httplevel`, `log.enabled`, `log.format` | `VIKUNJA_LOG_HTTP` … | Request logger |
@@ -175,7 +166,7 @@ Returns early if the response is already committed. Then, on the original error:
 | End-to-end limits through the real router (v2 unauth, BasicAuth budget, token refresh, `/ws`) | `pkg/webtests/unauth_rate_limit_test.go`, `huma_rate_limit_test.go`, `token_refresh_rate_limit_test.go`, `ws_rate_limit_test.go` | `go test -run TestV2UnauthRateLimit ./pkg/webtests/` (webtests skip under `mage test:filter` because it passes `-short`; see the `api-v2-routes` skill) |
 | Expand-scope route list matches registered routes | `pkg/webtests/expand_scope_routes_test.go` | |
 
-Not covered: `matchCORSOrigin` has no test in `pkg/routes` (grep found it only in `routes.go`); `RequireInstanceAdmin` and `gateV2AdminRoutes` are exercised only indirectly through admin webtests (Unverified: which ones).
+Not covered: `matchCORSOrigin` has no test in `pkg/routes` (grep found it only in `routes.go`); `RequireInstanceAdmin` and `gateV2AdminRoutes` are exercised only indirectly through the admin webtests (`pkg/webtests/admin_test.go`, `admin_share_bypass_test.go`, `huma_admin_test.go`, `huma_admin_actions_test.go`, all asserting 404 for non-admins).
 
 ## Gotchas and tech debt
 

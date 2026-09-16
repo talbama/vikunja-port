@@ -101,24 +101,17 @@ Side effects in `App.vue` setup: transparent document background in quick-add mo
 
 ```mermaid
 flowchart TD
-    A[await authStore.checkAuth] --> B{meta.requiresAdminPanel?}
-    B -- yes --> B1[await baseStore.appReady; PRO_FEATURE.ADMIN_PANEL on and info.isAdmin, refetching /user if undefined] --> B2{ok?}
-    B2 -- no --> NF[return not-found]
-    B2 -- yes --> C
-    B -- no --> C{requiresUserInvites / requiresTimeTracking?}
-    C -- fails --> NF
-    C -- ok --> D[from.hash starts with #share-auth-token= ? copy it onto to.hash]
+    A[await authStore.checkAuth] --> B{meta.requiresAdminPanel / UserInvites / TimeTracking?}
+    B -- "gate fails (await appReady; feature on, isAdmin via /user refetch if undefined)" --> NF[return not-found]
+    B -- ok --> D[from.hash is a share hash? copy it onto to.hash]
     D --> E{to.hash is a share hash and !authLinkShare?}
     E -- yes --> E1[saveLastVisited to; return link-share.auth with share param]
-    E -- no --> F[newRoute = await getAuthForRoute to, authStore]
-    F --> G{newRoute?}
-    G -- string --> G1[return it verbatim]
-    G -- object --> G2[return hash: to.hash, ...newRoute]
-    G -- undefined --> H{to.hash starts with #redirect=?}
-    H -- yes --> I[return, hash already on URL]
-    H -- no --> J{to.fullPath ends with to.hash?}
-    J -- no --> K[return to.fullPath + to.hash]
-    J -- yes --> L[continue]
+    E -- no --> F{newRoute = await getAuthForRoute}
+    F -- string --> G1[return it verbatim]
+    F -- object --> G2[return hash: to.hash, ...newRoute]
+    F -- undefined --> H{to.hash starts with #redirect=?}
+    H -- yes --> I[return; hash already on URL]
+    H -- no --> J[to.fullPath lacks to.hash? return fullPath + hash, else continue]
 ```
 
 `getAuthForRoute(to, authStore)` (exported, unit-tested):
@@ -138,7 +131,7 @@ flowchart TD
 
 ## Modals over routes (`useRouteWithModal`)
 
-Routes with `meta.showAsModal` are pushed with `history.state.backdropView` (the previous route's location) by their callers; `useRouteWithModal()` resolves that into `routeWithModal` (what the `<RouterView :route>` in `ContentAuth.vue` renders underneath) and builds `currentModal` by re-implementing vue-router's props resolution over `route.matched[0]` and wrapping lazy components in `defineAsyncComponent`. `closeModal()` order: if `history.state.back` matches `/projects/\d+/(\d+)` and the current project changed (task moved from kanban), push `project.view` with the backdrop's query; else `router.back()`; else push the backdrop route (unless `projectId === '0'`); else `project.index` of the current project or `home`.
+Routes with `meta.showAsModal` are pushed with `history.state.backdropView` (the previous route's location) by their callers; `useRouteWithModal()` resolves that into `routeWithModal` (what the `<RouterView :route>` in `ContentAuth.vue` renders underneath) and builds `currentModal` by re-implementing vue-router's props resolution over `route.matched[0]` and wrapping lazy components in `defineAsyncComponent`. `closeModal()` order: if `history.state.back` matches `/projects/\d+/(\d+)` and `baseStore.currentProject.id !== 0` (the comment describes a task moved from kanban, but the code does not compare project ids), push `project.view` for the *current* project with the backdrop's query; else `router.back()`; else push the backdrop route (unless `projectId === '0'`); else `project.index` of the current project or `home`.
 
 `ContentAuth.vue` wraps the router view in `<keep-alive :include="['project.view']">`, so `ProjectView.vue` survives opening a task modal; see [project-views](./project-views.md).
 

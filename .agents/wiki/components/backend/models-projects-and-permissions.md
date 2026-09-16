@@ -48,24 +48,14 @@ The `Project` model, its parent tree (closure table), the share rows that grant 
 ```mermaid
 flowchart TD
     A[Can* on Project p] --> B{p.ID < 1 ?}
-    B -- favorites -1 --> F[read only, owner = caller]
-    B -- saved filter --> SF[delegate to SavedFilter.Can*]
+    B -- favorites -1 / saved filter --> F[read-only owner check / delegate to SavedFilter.Can*]
     B -- real id --> C{isInstanceAdmin?}
     C -- yes --> Y[allow, max = Admin]
     C -- no --> D{auth is *LinkSharing?}
-    D -- yes --> L{share.ProjectID == p.ID and share.Permission high enough}
-    D -- no --> O{p.OwnerID == user}
-    O -- yes --> Y
-    O -- no --> G[getProjectAccessForUser CTE]
-    G --> G1[direct users_projects row]
-    G --> G2[team_projects via team_members]
-    G --> G3[same for every ancestor in project_ancestors]
-    G1 & G2 & G3 --> M[MAX permission]
-    M --> R{>= required?}
-    R -- yes --> Y
-    R -- no --> N[deny]
-    L -- yes --> Y
-    L -- no --> N
+    D -- yes --> L{share.ProjectID == p.ID and share.Permission high enough} --> Y
+    D -- no --> O{p.OwnerID == user} -- yes --> Y
+    O -- no --> G[getProjectAccessForUser CTE: users_projects, team_projects via team_members, same for every ancestor in project_ancestors]
+    G --> M[MAX permission] --> R{>= required?} -- yes --> Y
 ```
 
 Order matters: pseudo ids are resolved **before** the admin bypass (`CanUpdate` on a saved filter is owner-only even for admins), and `CanWrite`/`IsAdmin` return `false` for `p.ID < 1` unconditionally. `CanRead` also copies the loaded row into `*p`, so `ReadOne` never re-queries.

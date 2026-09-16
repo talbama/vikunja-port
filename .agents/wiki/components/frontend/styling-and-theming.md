@@ -27,9 +27,9 @@ How CSS reaches the page: a hand-picked subset of `bulma-css-variables`, a CSS-c
 | `styles/custom-properties/shadows.scss` | 25 | `--shadow-xs/sm/md/lg` from `--grey-500-hsl`; dark variants from `--grey-50-hsl` |
 | `styles/theme/*.scss` | 750 total with `components/` | Global selectors, see table below |
 | `styles/tailwind.css` | 3 | `@layer` order + `theme.css` and `utilities.css` with `prefix(tw)` |
-| `styles/fonts.scss` | 39 | Three `@font-face` (Quicksand, Open Sans, Open Sans Italic), variable `wght 400 700`, latin `unicode-range`, `font-display: swap` |
-| `styles/transitions.scss` | 18 | `.fade-*` and `.width-*` Vue transition classes using `$transition-duration` |
-| `.stylelintrc.json` | 105 | `stylelint-config-standard-scss` + `recommended-vue`, `postcss-html`, plugin `stylelint-use-logical` with `csstools/use-logical: true` |
+| `styles/fonts.scss` | 37 | Three `@font-face` (Quicksand, Open Sans, Open Sans Italic), variable `wght 400 700`, latin `unicode-range`, `font-display: swap` |
+| `styles/transitions.scss` | 19 | `.fade-*` and `.width-*` Vue transition classes using `$transition-duration` |
+| `.stylelintrc.json` | 95 | `stylelint-config-standard-scss` + `recommended-vue`, `postcss-html`, plugin `stylelint-use-logical` with `csstools/use-logical: true` |
 
 ## Internal structure
 

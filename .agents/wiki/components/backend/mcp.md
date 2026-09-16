@@ -43,22 +43,15 @@
 sequenceDiagram
     participant A as MCP client
     participant MW as SetupTokenMiddleware
-    participant H as Module.handler
-    participant S as per-request mcp.Server
-    participant L as callTool (loopback)
-    participant V2 as v2 Huma handler
-    A->>MW: POST /api/v2/mcp, Bearer tk_...
-    MW->>MW: shouldSkipRouteCheck: MCP prefix -> skip route table, set api_token
-    MW->>H: handler
-    H->>H: CrossOriginProtection.Check or CORS allow-list; require api_token; HasMCPAccess; body limits
-    H->>S: newServerForRequest: AddTool for typed tools the token authorizes; find_action/do_action for the rest
-    A->>S: tools/call labels_update {id, title}
-    S->>L: rawToolHandler -> callTool
-    L->>L: authorized(tool, token) via CanUseRoute(echoPath, method)
-    L->>V2: PATCH /labels/1 through api.Adapter() (humabridge prefix rewrite, AutoPatch GET+PUT)
-    V2-->>L: 200 JSON
-    L->>L: RecordAPITokenUse; parseResponse
-    S-->>A: CallToolResult (text + structuredContent for objects)
+    participant H as Module.handler / per-request mcp.Server
+    participant L as callTool (loopback) → v2 Huma handler
+    A->>MW: POST /api/v2/mcp, Bearer tk_... — shouldSkipRouteCheck: MCP prefix → skip route table, set api_token
+    MW->>H: CrossOriginProtection.Check or CORS allow-list; require api_token; HasMCPAccess; body limits
+    H->>H: newServerForRequest: AddTool for typed tools the token authorizes; find_action/do_action for the rest
+    A->>H: tools/call labels_update {id, title} → rawToolHandler → callTool
+    H->>L: authorized(tool, token) via CanUseRoute(echoPath, method)
+    L->>L: PATCH /labels/1 through api.Adapter() (humabridge prefix rewrite, AutoPatch GET+PUT) → 200 JSON → RecordAPITokenUse; parseResponse
+    H-->>A: CallToolResult (text + structuredContent for objects)
 ```
 
 Design points, each sourced from a comment in the code:
@@ -83,7 +76,7 @@ Design points, each sourced from a comment in the code:
 5. Add a `TestBuildToolSpec_*` or extend `exposure_test.go` if the shape is unusual. `pkg/webtests/mcp_catalog_test.go` → `TestMCP_Catalog_EveryExposedOperationIsReachable` asserts `mcp.ExposedToolNames()` equals the tools reachable on the live v2 API with an all-scopes token, so a listed ID that no route produces (or a typo) fails that test.
 6. Nothing else: `ConnectionInfo` and the frontend presets derive from the allow-list automatically.
 
-Deliberately absent (comment in `exposure.go`): credentials, account settings, webhooks, link shares, file transfer, admin routes, bots, health/info, the Atom feed. Keep it that way unless the security review says otherwise.
+Deliberately absent (comment in `exposure.go`): credentials, account settings, webhooks, link shares, file transfer, admin routes. Also not listed (no comment, but absent from the map): bots, health/info, the Atom feed. Keep it that way unless the security review says otherwise.
 
 ## Dependencies
 

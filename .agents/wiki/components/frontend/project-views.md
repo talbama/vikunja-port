@@ -35,10 +35,10 @@ The project shell (`views/project/ProjectView.vue` + `components/project/Project
 
 | Item | Notes |
 |---|---|
-| `useTaskList` (`composables/useTaskList.ts`, 274 lines) | URL is the source of truth: `useRouteQuery` for `page`, `filter`, `s`, `sort` (`field:order,...`, validated against `VALID_SORT_FIELDS`, `parseSortQuery`/`serializeSortBy`). `buildStoredQuery` builds the object persisted in `viewFiltersStore` (only non-default values). On view change with an empty URL the stored query is restored with `router.replace`, and `pendingQueryRestore` suppresses the load until that navigation settles. `formatSortOrder` always moves `id` last. A search (`s`) without an explicit sort sends empty `sort_by` so relevance ranking engages. `loadTasks(resetBeforeLoad)` uses a `requestId` to drop stale responses. Loads via `TaskCollectionService.getAll({projectId, viewId}, {...params, filter_timezone, expand}, page)` → `GET /projects/{p}/views/{v}/tasks`. |
+| `useTaskList` (`composables/useTaskList.ts`, 273 lines) | URL is the source of truth: `useRouteQuery` for `page`, `filter`, `s`, `sort` (`field:order,...`, validated against `VALID_SORT_FIELDS`, `parseSortQuery`/`serializeSortBy`). `buildStoredQuery` builds the object persisted in `viewFiltersStore` (only non-default values). On view change with an empty URL the stored query is restored with `router.replace`, and `pendingQueryRestore` suppresses the load until that navigation settles. `formatSortOrder` always moves `id` last. A search (`s`) without an explicit sort sends empty `sort_by` so relevance ranking engages. `loadTasks(resetBeforeLoad)` uses a `requestId` to drop stale responses. Loads via `TaskCollectionService.getAll({projectId, viewId}, {...params, filter_timezone, expand}, page)` → `GET /projects/{p}/views/{v}/tasks`. |
 | `useTaskListFiltering.ts` → `shouldShowTaskInListView(task, all)` | Hides a subtask only when its parent is in the same result set (it renders nested under the parent); cross-project subtasks stay visible. |
-| `ProjectList.vue` (431 lines) | `useTaskList(..., {position: 'asc'}, expand)`; `expand` drops `subtasks` for the favorites pseudo project (`projectId === -1`). Drag with `zhyswan-vuedraggable` (`group: {name: 'tasks', put: false}`, disabled unless `canDragTasks && isPositionSorting`; touch devices use the `.handle` element and no delay). `saveTaskPosition`: first `useTaskDragToProject.handleTaskDropToProject` (drop on a sidebar project), then resolve the moved task **by id from `e.item.dataset.taskId`** (the DOM index is unreliable), `calculateItemPosition(before, after)`, `TaskPositionService.update` → `POST /tasks/{id}/position`. `updateTaskList(newTasks)` after add: reload when not sorted by position, else prepend. `updateTasks(updatedTask)` reloads for pseudo projects (`projectId < 0`). J/K/Enter roving focus through `taskRefs` and `SingleTaskInProject.focus()/click()`. `canWrite = maxPermission > READ && id > 0`; `canMarkAsDone` also for pseudo projects. |
-| `ProjectTable.vue` (521 lines) | `useStorage('tableViewColumns')` and `useStorage('tableViewSortBy')` (default `{index: 'desc'}`); `sort(property, event)` supports multi-column with Ctrl/Meta; `setActiveColumnsSortParam` only sends sort keys whose column is visible (`camelCase(prop)`). Rows link to `task.detail` without modal state (TODO at line 477). Columns: index, done, project, title (with `TaskGlanceTooltip`), priority, labels, assignees, comment count, due/start/end/done_at/created/updated (`DateTableCell`), percent done, created by. |
+| `ProjectList.vue` (430 lines) | `useTaskList(..., {position: 'asc'}, expand)`; `expand` drops `subtasks` for the favorites pseudo project (`projectId === -1`). Drag with `zhyswan-vuedraggable` (`group: {name: 'tasks', put: false}`, disabled unless `canDragTasks && isPositionSorting`; touch devices use the `.handle` element and no delay). `saveTaskPosition`: first `useTaskDragToProject.handleTaskDropToProject` (drop on a sidebar project), then resolve the moved task **by id from `e.item.dataset.taskId`** (the DOM index is unreliable), `calculateItemPosition(before, after)`, `TaskPositionService.update` → `POST /tasks/{id}/position`. `updateTaskList(newTasks)` after add: reload when not sorted by position, else prepend. `updateTasks(updatedTask)` reloads for pseudo projects (`projectId < 0`). J/K/Enter roving focus through `taskRefs` and `SingleTaskInProject.focus()/click()`. `canWrite = maxPermission > READ && id > 0`; `canMarkAsDone` also for pseudo projects. |
+| `ProjectTable.vue` (520 lines) | `useStorage('tableViewColumns')` and `useStorage('tableViewSortBy')` (default `{index: 'desc'}`); `sort(property, event)` supports multi-column with Ctrl/Meta; `setActiveColumnsSortParam` only sends sort keys whose column is visible (`camelCase(prop)`). Rows link to `task.detail` without modal state (TODO at line 477). Columns: index, done, project, title (with `TaskGlanceTooltip`), priority, labels, assignees, comment count, due/start/end/done_at/created/updated (`DateTableCell`), percent done, created by. |
 | `partials/SortPopup.vue` | `v-model: SortBy` with a single `field:order` option list; `position:asc` is "manual". |
 | `partials/FilterPopup.vue` → `partials/Filters.vue` | `FilterPopup` holds a local copy and emits on "show results"; `Filters.change(event)` decides between blur and immediate mode via `changeImmediately`, runs `transformFilterStringForApi` with label and project resolvers, and routes plain text (no filter tokens, `hasFilterQuery`) into `s` instead of `filter`. `filterFromView` shows the view's own filter read from `projectStore`. |
 
@@ -46,7 +46,7 @@ The project shell (`views/project/ProjectView.vue` + `components/project/Project
 
 | Item | Notes |
 |---|---|
-| `ProjectGantt.vue` (201 lines) | Date range (`DateRangeInput`), "show tasks without dates", reset button, `GanttChart` + `TaskForm` (only `canWrite`). `addGanttTask` creates with today → today+7 days. Receives `route` as a **prop** from `ProjectView.vue` because in modal mode the current route is the task. |
+| `ProjectGantt.vue` (200 lines) | Date range (`DateRangeInput`), "show tasks without dates", reset button, `GanttChart` + `TaskForm` (only `canWrite`). `addGanttTask` creates with today → today+7 days. Receives `route` as a **prop** from `ProjectView.vue` because in modal mode the current route is the task. |
 | `views/project/helpers/useGanttFilters.ts` | `GanttFilters {projectId, viewId, dateFrom, dateTo, showTasksWithoutDates}`; defaults today-15 to today+55 days. `ganttRouteToFilters` / `ganttFiltersToRoute` (both marked `// FIXME: use zod for this`, lines 43 and 58) map to query `dateFrom`, `dateTo` (kebab dates), `showTasksWithoutDates`. `ganttFiltersToApiParams` builds a four-clause date-range filter with `filter_include_nulls`, `sort_by: ['start_date','done','id']`, `expand: 'subtasks'`. Persists the query into `viewFiltersStore` like `useTaskList`. Composes `useRouteFilters` + `useGanttTaskList`. |
 | `composables/useRouteFilters.ts` | Generic two-way sync between a `filters` ref and the route (`routeToFilters`, `filtersToRoute`, `routeAllowList`), `hasDefaultFilters` via `fast-deep-equal`. |
 | `views/project/helpers/useGanttTaskList.ts` | `// FIXME: unify with general useTaskList` (line 24). Loads **all pages** recursively into a `Map<id, ITask>`, watches `filters` deep, mirrors `taskStore.lastUpdatedTask` into the map, `addTask` via `TaskService.create`, `updateTask` optimistic with `klona` rollback and hard-coded English toasts (`success('Saved')`). |
@@ -84,22 +84,15 @@ The project shell (`views/project/ProjectView.vue` + `components/project/Project
 
 ```mermaid
 flowchart TD
-    R[route project.view] --> PV[ProjectView.vue]
-    PV -->|viewKind| L[ProjectList.vue]
-    PV --> T[ProjectTable.vue]
-    PV --> G[ProjectGantt.vue]
-    PV --> K[ProjectKanban.vue]
+    R[route project.view] --> PV[ProjectView.vue by viewKind]
+    PV --> L[ProjectList.vue] & T[ProjectTable.vue] & G[ProjectGantt.vue] & K[ProjectKanban.vue]
     L & T --> UTL[useTaskList\nURL query + viewFilters store]
-    UTL --> TCS[TaskCollectionService\nGET /projects/p/views/v/tasks]
-    G --> UGF[useGanttFilters + useRouteFilters]
-    UGF --> UGTL[useGanttTaskList\nall pages into Map]
-    UGTL --> TCS
+    G --> UGF[useGanttFilters + useRouteFilters] --> UGTL[useGanttTaskList\nall pages into Map]
     K --> KS[stores/kanban.ts\nbuckets, pagination]
-    KS --> TCS
+    UTL & UGTL & KS --> TCS[TaskCollectionService\nGET /projects/p/views/v/tasks]
     L & K -->|drag| POS[TaskPositionService\nPOST /tasks/id/position]
     K -->|bucket change| TB[TaskBucketService\nbuckets/b/tasks]
-    L & T & G & K --> PW[ProjectWrapper.vue\nview switcher]
-    PW --> VF[stores/viewFilters.ts]
+    L & T & G & K --> PW[ProjectWrapper.vue\nview switcher] --> VF[stores/viewFilters.ts]
 ```
 
 Task rows are `SingleTaskInProject.vue` (list) and `KanbanCard.vue` (kanban); both write through `taskStore.update`, which calls `kanbanStore.ensureTaskIsInCorrectBucket` ([stores](./stores.md#task-srcstorestasksts)).

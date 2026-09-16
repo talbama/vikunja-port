@@ -36,10 +36,10 @@ How tests are organized on each side, what infrastructure they rely on, how to w
 
 ### Writing a webtest (handler test)
 
-- v1: declare `testHandler := webHandlerTest{user: &testuser1, strFunc: func() handler.CObject { return &models.LabelTask{} }, t: t}` (see `pkg/webtests/label_task_test.go`; labels themselves are tested on v2 in `huma_label_test.go`) and call `testHandler.testCreateWithUser(nil, nil, `{"title":"x"}`)`, `testReadAllWithUser`, `testUpdateWithUser`, `testDeleteWithUser`, plus the `...WithLinkShare` variants. Assert status on `rec.Code` and body substrings; for errors use `assertHandlerErrorCode(t, err, models.ErrCodeLabelDoesNotExist)`.
+- v1: declare `testHandler := webHandlerTest{user: &testuser1, strFunc: func() handler.CObject { return &models.LabelTaskBulk{} }, t: t}` (see `pkg/webtests/label_task_test.go`; labels themselves are tested on v2 in `huma_label_test.go`) and call `testHandler.testCreateWithUser(nil, nil, `{"title":"x"}`)`, `testReadAllWithUser`, `testUpdateWithUser`, `testDeleteWithUser`, plus the `...WithLinkShare` variants. Assert status on `rec.Code` and body substrings; for errors use `assertHandlerErrorCode(t, err, models.ErrCodeLabelDoesNotExist)`.
 - v2: `webHandlerTestV2` in `pkg/webtests/integrations.go` takes the same `urlParams` map and serves real HTTP through Huma; errors come back as `*v2HTTPError` so the same `assertHandlerErrorCode` works. For ETag, PATCH, and other v2-only behavior use `humaRequest(t, e, method, path, body, humaTokenFor(t, user), contentType)` from `pkg/webtests/huma_helpers_test.go`. The RFC 9457 body shape is asserted once in `TestHuma_ErrorShapeIsRFC9457`; per-resource tests only check status codes.
 - Template: `pkg/webtests/_test.go.tpl`.
-- Keep v1 and v2 tests in sibling files (`label_test.go`, `huma_label_test.go`) so parity is reviewable.
+- Keep v1 and v2 tests in sibling files (`label_task_test.go`, `huma_label_task_test.go`) so parity is reviewable.
 
 ### Writing an event or job test
 
@@ -70,7 +70,7 @@ Copy `pkg/migration/20260830162731_test.go`: create an engine with `db.CreateTes
 - Runner: `mage test:e2e "<args>"` only (see [Development workflow](07-development-workflow.md#end-to-end-playwright)); pin `VIKUNJA_E2E_API_PORT=3456`.
 - Config `frontend/playwright.config.ts`: `testDir tests/e2e`, one worker, chromium only, `testIdAttribute: 'data-cy'`, service workers blocked, no `webServer` block.
 - Fixtures `frontend/tests/support/fixtures.ts`: `apiContext` (auto; `Factory.truncateAll()` before every test), `currentUser`, `userToken`, `authenticatedPage` (logs in through the API, injects `API_URL` and the token into `localStorage` via `addInitScript`, navigates to `about:blank` on teardown so polling does not starve the next seed).
-- Seeding `frontend/tests/support/factory.ts`: `Factory.create(count, override)` → `PATCH /api/v1/test/<table>?truncate=…` with `Authorization: <testing token>`; `'{increment}'` placeholders; 24 factories in `frontend/tests/factories/` (`TaskFactory` copies `id` into `index` to satisfy the `(project_id, index)` unique constraint).
+- Seeding `frontend/tests/support/factory.ts`: `Factory.create(count, override)` → `PATCH /api/v1/test/<table>?truncate=…` with `Authorization: <testing token>`; `'{increment}'` placeholders; 25 factories in `frontend/tests/factories/` (`TaskFactory` copies `id` into `index` to satisfy the `(project_id, index)` unique constraint).
 - Write a spec: `import {test, expect} from '../../support/fixtures'`, seed with factories in `beforeEach`, use `authenticatedPage` for signed-in flows, select with `page.getByTestId('...')` (renders from `v-cy`) or roles, assert with `expect(page).toHaveURL` / `toContainText`. Put it in `frontend/tests/e2e/<area>/`.
 - Before writing a component test, check whether an e2e spec already covers the scenario; extend it if so.
 

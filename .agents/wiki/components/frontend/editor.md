@@ -85,15 +85,12 @@ ProseMirror builds nodes its schema rejects and crashes later (`FRONTEND-OSS-2H9
 ```mermaid
 flowchart LR
     U[User types / pastes] --> PM[ProseMirror doc]
-    PM -->|onUpdate| BN[bubbleNow: getHTML]
-    BN --> M[v-model HTML]
+    PM -->|onUpdate| BN[bubbleNow: getHTML → v-model HTML]
     BN -->|storageKey| LS[(localStorage editorDraft-*)]
-    M -->|Description.vue saveWithDelay / Comments.vue| API[PUT/POST v1 or PATCH v2<br/>HTML body]
-    BS[Save / Mod-Enter / checkbox toggle] --> BSV[bubbleSave: emit save, clear draft]
-    BSV --> API
+    BN -->|Description.vue saveWithDelay / Comments.vue| API[PUT/POST v1 or PATCH v2<br/>HTML body]
+    BS[Save / Mod-Enter / checkbox toggle] --> BSV[bubbleSave: emit save, clear draft] --> API
     API --> DB[(tasks.description / task_comments.comment: HTML)]
-    DB -->|?format=markdown| RT[pkg/richtext HTMLToMarkdown]
-    RT -->|MarkdownToHTMLWithMentions| DB
+    DB <-->|?format=markdown| RT[pkg/richtext HTMLToMarkdown / MarkdownToHTMLWithMentions]
     DB --> LOAD[modelValue watch → setModeAndValue → setContent]
     LOAD --> CI[CustomImage: data-src → blob url]
     LOAD --> TL[TaskLink parseHTML → pill]
@@ -107,7 +104,7 @@ Backend counterpart (`pkg/richtext`): storage stays HTML. `HTMLToMarkdown` (html
 ## Dependencies
 
 - **Uses:** `@tiptap/*` (core, vue-3, starter-kit, extension-link/image/table/mention/list/subscript/superscript/underline/code-block-lowlight/typography/hard-break/blockquote, suggestion), `@floating-ui/dom`, `marked`, `lowlight`, `nanoid`; `helpers/attachments.ts`, `helpers/inputPrompt.ts`, `helpers/getTopLayerContainer.ts`, `helpers/fetchTaskById.ts`, `helpers/taskCache.ts`, `helpers/parseTaskIdFromUrl.ts`, `helpers/shortcut.ts`; legacy `services/projectUsers.ts`; `stores/base.ts`, `stores/projects.ts`; `components/misc/ImageLightbox.vue`, `UserAvatar.vue`, `TaskGlanceTooltip.vue`.
-- **Used by:** the six consumers listed under entry points; `commentReplyContext.ts` (`Comments.vue`) is injected by `BlockquoteCommentView.vue`.
+- **Used by:** the seven consumers listed under entry points; `components/tasks/partials/commentReplyContext.ts` (provided by `Comments.vue`) is injected by `BlockquoteCommentView.vue`.
 
 ## Invariants and assumptions
 
@@ -157,4 +154,4 @@ Also `frontend/src/helpers/imageZoom.test.ts`. E2E (`frontend/tests/e2e/editor/`
 
 ## Related pages
 
-[task-detail](./task-detail.md) (Description, Comments, attachments), [api-client-legacy](./api-client-legacy.md), [styling-and-theming](./styling-and-theming.md) (editor SCSS lives in `TipTap.vue`), [testing-infrastructure](./testing-infrastructure.md), backend [notifications-and-mail](../backend/notifications-and-mail.md) (mention notifications), [operations-subsystems](../backend/operations-subsystems.md) (`pkg/richtext`), [api-v2-huma](../backend/api-v2-huma.md) (`format=markdown`), [Data flows](../../10-data-flows.md#comment-to-notification), [playbooks/build-vue-feature](../../playbooks/build-vue-feature.md).
+[task-detail](./task-detail.md) (Description, Comments, attachments), [api-client-legacy](./api-client-legacy.md), [styling-and-theming](./styling-and-theming.md) (editor SCSS lives in `TipTap.vue`), [testing-infrastructure](./testing-infrastructure.md), backend [notifications-and-mail](../backend/notifications-and-mail.md) (mention notifications), [operations-subsystems](../backend/operations-subsystems.md) (`pkg/richtext`), [api-v2-huma](../backend/api-v2-huma.md) (`format=markdown`), [Data flows](../../10-data-flows.md#5-background-comment--notification--mail-bell-websocket), [playbooks/build-vue-feature](../../playbooks/build-vue-feature.md).

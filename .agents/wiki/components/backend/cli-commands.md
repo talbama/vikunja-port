@@ -55,7 +55,7 @@ All commands accept the persistent `--config <file>` flag (`cmd.go`), applied in
 | `LightInit()` | `log.InitLogger()` → `config.InitConfig()` → `time.LoadLocation(service.timezone)` (Critical, not fatal) → `red.InitRedis()` → `keyvalue.InitStorage()` | config and cache only; no DB. `migrate` and `testmail` |
 | `InitEngines()` | `models.SetEngine()` → `files.SetEngine()` → `db.CreateParadeDBIndexes()` (each fatal) | used inside `FullInitWithoutAsync` and again by `dump.Restore` after the config is replaced |
 | `FullInitWithoutAsync()` | `LightInit()` → `files.InitFileHandler` → **`migration.Migrate(nil)`** → `InitEngines()` → `license.Init()` → `audit.Init()` if enabled → `mail.StartMailDaemon()` → `ldap.InitializeLDAPConnection()` → `openid.GetAllProviders()` (fatal only on duplicate issuer) → `i18n.Init()` → `plugins.Initialize()` | everything that needs data but no scheduled work: `dump`, `restore`, `healthcheck`, `repair *` |
-| `FullInit()` | `FullInitWithoutAsync()` → `cron.Init()` + 14 `Register*Cron()` → `ws.InitHub()` → goroutine: `models.RegisterListeners()`, `migrationHandler.RegisterListeners()`, `ws.RegisterListeners()`, `events.InitEvents()`, then `events.Dispatch(&BootedEvent{})` | `web`, `user *` |
+| `FullInit()` | `FullInitWithoutAsync()` → `cron.Init()` + 13 `Register*Cron()` plus the one-shot `openid.CleanupSavedOpenIDProviders()` → `ws.InitHub()` → goroutine: `models.RegisterListeners()`, `migrationHandler.RegisterListeners()`, `ws.RegisterListeners()`, `events.InitEvents()`, then `events.Dispatch(&BootedEvent{})` | `web`, `user *` |
 
 Migrations therefore run on every `web`, `user`, `dump`, `restore`, `healthcheck`, and `repair` invocation, not only on `migrate`. `healthcheck` against a DB that is down fails inside `Migrate` with a fatal before reaching `health.Check` (Unverified at runtime; follows from the order).
 
@@ -138,14 +138,14 @@ Init failures are fatal (`log.Fatalf` → exit 1) with the message naming the su
 
 ## Tests
 
-- `pkg/modules/dump/restore_test.go` (158 lines) covers restore helpers (`parseDbFileName`, value conversion); `pkg/db/dump_test.go` covers `Restore` conversions. Run `mage test:filter TestRestore`.
+- `pkg/modules/dump/restore_test.go` (158 lines) has one test, `TestConvertFieldValue` (value conversion); `parseDbFileName` and the restore flow itself are untested. `pkg/db/dump_test.go` covers `Restore` conversions. Run `mage test:filter TestRestore`.
 - `pkg/doctor/*_test.go` for database, files, output formatting.
 - No tests for `pkg/cmd` itself or `pkg/initialize`; command behaviour is exercised indirectly by CI (`test-migration-smoke` runs `migrate`; `test-frontend-e2e-playwright` and `test-veans-e2e` run `web`).
 
 ## Gotchas and tech debt
 
 - `pkg/cmd/migrate.go:33` `// TODO: add args to run migrations up or down, until a certain point etc` (a `MigrateTo` already exists in `pkg/migration` but is unexposed).
-- The `03-backend-architecture` page lists `migrate` and `user` under `FullInitWithoutAsync`; the code uses `LightInit` for `migrate` and `FullInit` for every `user` subcommand.
+- `migrate` uses `LightInit` and every `user` subcommand uses `FullInit`, not `FullInitWithoutAsync` as one might expect from their scope; the [03-backend-architecture](../../03-backend-architecture.md#startup) table matches the code.
 - `dump`'s filename uses `time.Now().Format("2006-01-02_15-03-05")`: `03` is the 12-hour clock in Go layouts, so the "minutes" field is actually the hour again; the help text promises `HH-II-SS`.
 - `restore` writes the restored config into the process cwd, not next to the pinned `--config` file, and then re-runs `LightInit`, which searches the cwd last; with `--config` pointing elsewhere the restored file may be ignored. Unverified at runtime.
 - `healthcheck` needs a full DB init including migrations, so it is heavier than the HTTP `/health` route and can mutate the schema.

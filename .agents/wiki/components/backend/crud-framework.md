@@ -11,12 +11,12 @@ The generic pipeline that both API versions run a model through: open a session,
 
 | Entry | Where | Called by |
 |---|---|---|
-| `DoCreate(ctx, obj, auth) error` | `pkg/web/handler/core.go` | `CreateWeb`; v2 handlers (`grep -l 'handler.Do' pkg/routes/api/v2/*.go` → 37 files) |
+| `DoCreate(ctx, obj, auth) error` | `pkg/web/handler/core.go` | `CreateWeb`; v2 handlers (`grep -l 'handler.Do' pkg/routes/api/v2/*.go` → 40 files) |
 | `DoReadOne(ctx, obj, auth) (maxPermission int, error)` | `core.go` | `ReadOneWeb`; v2 read handlers, which fold `maxPermission` into the body and ETag |
 | `DoReadAll(ctx, obj, auth, search, page, perPage) (result any, count int, total int64, error)` | `core.go` | `ReadAllWeb`; v2 list handlers |
 | `DoUpdate`, `DoDelete` | `core.go` | `UpdateWeb`, `DeleteWeb`; v2 |
 | `WebHandler{EmptyStruct func() CObject}` with `CreateWeb`, `ReadOneWeb`, `ReadAllWeb`, `UpdateWeb`, `DeleteWeb` | `helper.go`, `create.go`, `read_one.go`, `read_all.go`, `update.go`, `delete.go` | `pkg/routes/routes.go` (v1 only), `pkg/webtests/integrations.go` → `webHandlerTest` |
-| `ErrGenericForbidden{Message}`, `ErrReadForbidden()` | `error.go` | `Do*`; v2 by-index redirect (`pkg/routes/api/v2/tasks.go`) |
+| `ErrGenericForbidden{Message}`, `ErrReadForbidden()` | `error.go` | `Do*`; v2 through `errReadForbidden` in `pkg/routes/api/v2/errors.go` (used by the hand-rolled read checks in `tasks.go`) |
 | `WriteFileDownload`, `WriteAttachmentDownload`, `WriteProjectBackground`, `BuildUploadResult`, `AttachmentUploadResult` | `pkg/web/files/*.go` | v1 `task_attachment.go`, v2 `task_attachments.go`, `backgrounds.go` |
 | `TestErrorCodesAreUnique` | `pkg/web/error_codes_test.go` | CI |
 
@@ -155,7 +155,7 @@ Not covered: pagination clamping, the `x-pagination-*` headers and the nil-slice
 - `ErrGenericForbidden` has no numeric code, so v1 clients see `"code":0` and the frontend cannot translate it. Unverified: whether a code is planned.
 - `ReadAllWeb` never validates the bound struct, so query/body values used by `ReadAll` (filters, `expand`) are unvalidated on v1; v2 validates through Huma tags.
 - `DoReadAll` has no permission gate; a `ReadAll` that forgets to scope by `a.GetID()` leaks every row. Review every new `ReadAll` for its `WHERE`.
-- `core.go` is small (211 lines, 11 commits) but every request passes through it; behaviour changes there affect both API versions at once. The read-session change (`fe712620f`, 2026-09-06) is the most recent semantic shift: reads no longer hold a transaction.
+- `core.go` is small (211 lines, 11 commits) but every request passes through it; behaviour changes there affect both API versions at once. The read-session change (`fe712620f`, 2026-09-08) is the most recent semantic shift: reads no longer hold a transaction.
 - The `Authprovider`/`Auths` types in `web.go` and most of `readme.md`'s "Handler config" section describe the old library API and are dead in this repo.
 - Open TODOs from the library era live in `pkg/web/readme.md:40-45` (hooks, "magic" CRUD fallback); nothing in code references them.
 - The `pageNumber < 0` branch in `read_all.go` is dead code after the earlier negative-page check.

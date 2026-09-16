@@ -182,7 +182,7 @@ Migration test patterns worth copying: `20260720120000_test.go` (break the schem
 - `pkg/cmd/migrate.go:33` `// TODO: add args to run migrations up or down, until a certain point etc` — `MigrateTo` exists in the package but no CLI exposes it.
 - `IsUniqueConstraintError` SQLite branch returns true for any unique failure whose message contains `task_buckets`, regardless of `constraintName` (`pkg/db/helpers.go`).
 - `renameColumn` on mysql forces `BIGINT NOT NULL DEFAULT 0`; it is only correct for id-like columns.
-- `renameTable` quotes with backticks on postgres too; Unverified: whether any live migration exercises that branch on postgres.
+- `renameTable` quotes with backticks on postgres too; this works because xorm's `Statement.ReplaceQuote` rewrites backticks to the dialect quote on every raw `Exec` (mysql and sqlite are passed through), and `20221113170740` (`lists` → `projects` and friends) exercises that branch on every dialect.
 - The test engine uses `file::memory:?cache=shared` while production `memory` uses a WAL temp file, so lock behaviour differs; `pkg/models/main_test.go` documents that a second session blocks until the first commits under shared cache.
 - `restore.go` picks `ms[len(ms)-2]` as the migration to `MigrateTo` before replaying data. Unverified: why the second-to-last id rather than the last.
 - `initSchema` marks all migrations applied on fresh installs, so data backfills inside migrations never run on a fresh or restored DB; anything that must exist on a fresh DB belongs in code, not a migration.

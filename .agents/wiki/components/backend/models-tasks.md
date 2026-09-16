@@ -19,7 +19,7 @@ The `Task` aggregate in `pkg/models`: the row itself plus everything hung off it
 | `TaskAssginee.Create/Delete/ReadAll`, `BulkAssignees.Create` | `task_assignees.go` | v1/v2 assignee routes (`pkg/routes/api/v2/task_assignees.go`, `task_assignees_bulk.go`) |
 | `TaskRelation.Create/ReadOne/Delete` | `task_relation.go` | `pkg/routes/api/v2/task_relations.go` |
 | `TaskComment.*`, `TaskAttachment.*`, `UploadTaskAttachments`, `GetTaskAttachmentForDownload` | `task_comments.go`, `task_attachment.go` | comment and attachment routes |
-| `TaskUnreadStatus.Update` | `task_unread_statuses.go` | `POST /tasks/{id}/read`, v2 `task_unread_status.go` |
+| `TaskUnreadStatus.Update` | `task_unread_statuses.go` | v1 `POST /tasks/:projecttask/read`, v2 `tasks-mark-read` (`PUT /tasks/{task}/read`, `task_unread_status.go`) |
 | `BulkTask.Update`, `BulkTaskCreation.Create`, `TaskDuplicate.Create` | `bulk_task.go`, `bulk_task_create.go`, `task_duplicate.go` | `tasks-bulk-update` (`PUT /tasks/bulk`), `tasks-bulk-create` (`POST /projects/{project}/tasks/bulk`), `task_duplicate.go` |
 | `RegisterReminderCron`, `RegisterOverdueReminderCron`, `RegisterTaskCleanupCron` | `task_reminder.go`, `task_overdue_reminder.go`, `task_delete_cron.go` | `pkg/initialize/init.go` → `FullInit` |
 
@@ -165,7 +165,7 @@ stateDiagram-v2
 - `mage test:filter 'TestTask_|TestUpdateDone|TestAddRepeatIntervalToTime|TestHardDeleteTask|TestSetNewTaskIndexes|TestTaskIndex'` covers `tasks_test.go` (1676 lines: create with reminders/subscriptions, update subtests for buckets, project moves, repeat modes incl. month, from-current-date, 292-year spans, checklist reset, `fields` restriction, repeat cap, the DoS regression) and `task_index_test.go`.
 - Positions: `task_position_test.go` (conflict detection/resolution, repair, upsert, bulk insert, `TestViewLockOrder`) and `task_position_view_test.go` (permission matrix incl. saved filters). `mage test:filter 'TestTaskPosition|TestResolveTaskPositionConflicts|TestRepairTaskPositions|TestUpsertTaskPosition|TestBulkInsertTaskPositions|TestViewLockOrder'`.
 - Also: `task_reminder_test.go`, `task_overdue_reminder_test.go`, `task_relation_test.go`, `task_relation_authz_test.go`, `task_assignees_test.go`, `task_comments_test.go`, `task_attachment_test.go`, `task_duplicate_test.go`, `task_delete_cron_test.go`, `bulk_task_test.go`, `bulk_task_create_test.go`.
-- Fixtures: `pkg/db/fixtures/tasks.yml` (52 tasks; ids and `index` are relied on by tests), `task_positions.yml` (only tasks 1 and 2 in view 1 have rows; the rest are commented out so "no position" paths are exercised), `task_reminders.yml`, `task_relations.yml`, `task_assignees.yml`, `task_attachments.yml`, `task_comments.yml`, `project_task_counters.yml`, `task_index_aliases.yml`.
+- Fixtures: `pkg/db/fixtures/tasks.yml` (52 tasks; ids and `index` are relied on by tests), `task_positions.yml` (11 rows: tasks 1 and 2 in view 1 plus tasks 35 and 39–46 in views 21/25/36/38; task 3's row is commented out so "no position" paths are exercised), `task_reminders.yml`, `task_relations.yml`, `task_assignees.yml`, `task_attachments.yml`, `task_comments.yml`, `project_task_counters.yml`, `task_index_aliases.yml`.
 - Not covered: `formatMentionsForEmail` avatar path, `GetPreview` resizing, the overdue cron's per-minute delivery loop end to end.
 
 ## Gotchas and tech debt

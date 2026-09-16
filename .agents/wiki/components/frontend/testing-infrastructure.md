@@ -5,7 +5,7 @@ Two layers: Vitest unit tests co-located under `frontend/src/`, and Playwright e
 ## Responsibility
 
 - **Owns:** `vite.config.ts` `test` block, `tsconfig.vitest.json`, `playwright.config.ts`, `tests/support/*`, `tests/factories/*`, `tests/fixtures/*`, `tests/e2e/**`, `src/directives/testid.ts`, the Histoire setup.
-- **Does not own:** the seeding endpoint (`pkg/routes/api/v1/testing.go`, [api-v1](../backend/api-v1.md)), the mage target `Test.E2E` (`magefile.go:498-640`, [build-and-release](../build-and-release.md)), or the CI job definition (`.github/workflows/test.yml` → `test-frontend-e2e-playwright`).
+- **Does not own:** the seeding endpoint (`pkg/routes/api/v1/testing.go`, [api-v1](../backend/api-v1.md)), the mage target `Test.E2E` (`magefile.go:497-643`, [build-and-release](../build-and-release.md)), or the CI job definition (`.github/workflows/test.yml` → `test-frontend-e2e-playwright`).
 
 ## Entry points and public API
 
@@ -14,7 +14,7 @@ Two layers: Vitest unit tests co-located under `frontend/src/`, and Playwright e
 | `pnpm test:unit` (`vitest --dir ./src`), `pnpm vitest run <file>` | `package.json:44` | developers, CI `test-frontend-unit` |
 | `mage test:e2e "<playwright args>"` | `magefile.go:75` → `Test.E2E` | developers (never `pnpm test:e2e` directly) |
 | `test`, `expect` with fixtures `apiContext`, `currentUser`, `userToken`, `authenticatedPage` | `tests/support/fixtures.ts` | every spec imports from here, not from `@playwright/test` |
-| `Factory` and 24 subclasses | `tests/support/factory.ts`, `tests/factories/*.ts` | specs seed rows |
+| `Factory` and 25 subclasses | `tests/support/factory.ts`, `tests/factories/*.ts` | specs seed rows |
 | `seed(apiContext, table, data)` | `tests/support/seed.ts` | older specs; duplicate of `Factory.seed` |
 | `login`, `setupApiUrl`, `createFakeUser` | `tests/support/authenticateUser.ts` | fixtures |
 | `v-cy="id"` → `data-cy` | `src/directives/testid.ts` | templates; Playwright `getByTestId` |
@@ -63,7 +63,7 @@ Two layers: Vitest unit tests co-located under `frontend/src/`, and Playwright e
 
 - `Factory.create(count, override, truncate = true)` (`factory.ts:35`): merges `factory()` defaults with overrides, calls function values with the index, replaces the literal `'{increment}'` with the index, drops non-primitive fields, runs `transformForSeed`, then `PATCH test/<table>?truncate=...` with header `Authorization: VIKUNJA_SERVICE_TESTINGTOKEN` (fallback `averyLongSecretToSe33dtheDB`). `truncateAll()` is `DELETE test/all`. The returned objects keep nested/original values, so specs can read what they seeded.
 - `TaskFactory` (`tests/factories/task.ts`) overrides `create` to copy a numeric `id` override into `index`, because `tasks` has `UNIQUE(project_id, index)` and `index: '{increment}'` restarts at 1 per call.
-- 24 factories: `bucket`, `label_task`, `labels`, `license`, `link_sharing`, `project`, `project_view`, `saved_filter`, `session`, `task`, `task_assignee`, `task_attachments`, `task_buckets`, `task_comment`, `task_relation`, `task_reminders`, `team`, `team_member`, `team_project`, `time_entry`, `token`, `totp`, `user`, `users_project`. Data from `@faker-js/faker`.
+- 25 factories: `bucket`, `label_task`, `labels`, `license`, `link_sharing`, `project`, `project_view`, `saved_filter`, `session`, `task`, `task_assignee`, `task_attachments`, `task_buckets`, `task_comment`, `task_relation`, `task_reminders`, `team`, `team_member`, `team_project`, `time_entry`, `token`, `totp`, `user`, `users_project`, `webhook`. Data from `@faker-js/faker`.
 - `tests/support/seed.ts` is an older standalone `seed()` that reads `TEST_SECRET` instead of `VIKUNJA_SERVICE_TESTINGTOKEN`; mage and CI export both with the same value.
 - Other support: `commands.ts` (`pasteFile`, `pasteHtmlFromClipboard`, `dragAndDrop`), `filterTestHelpers.ts`, `updateUserSettings.ts`, `userSettings.ts` (`gotoUserSettings`), `websocket.ts` (`openWs`, `authenticateWs`, `subscribeWs`, `waitForMessage`, `collectMessages`, `closeWs`). Binary fixtures: `tests/fixtures/image.jpg`, `image-blue.png`, `test.pdf`.
 

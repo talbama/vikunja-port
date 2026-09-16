@@ -46,22 +46,11 @@ sequenceDiagram
     participant S as /api/v1/ws (pkg/websocket)
     participant TB as TimerBadge.vue / timeTracking store
     participant N as Notifications.vue
-    CA->>WS: connect()  (setup, needs getToken())
-    WS->>S: new WebSocket(ws(s)://.../ws)
-    S-->>WS: open
-    WS->>S: {action:"auth", token}
-    TB->>WS: subscribe("timer.*", cb)  (queued: not yet authenticated)
-    N->>WS: subscribe("notification.created", cb)
-    S-->>WS: {action:"auth.success", success:true}
-    WS->>WS: authenticated=true, resubscribeAll()
-    WS->>S: {action:"subscribe", event:"timer.created"} ... x4
-    Note over S: TimeEntryUpdatedEvent → TimeEntryListener → hub.PublishForUser
-    S-->>WS: {event:"timer.updated", data:{...}}
-    WS->>TB: cb(msg) → parseTimeEntry → applyTimerEvent()
-    S-->>WS: {event:"notification.created", data:{...}}
-    WS->>N: cb(msg) → prepend NotificationModel if id unknown
-    S-->>WS: close (deploy/restart)
-    WS->>WS: connected=false, scheduleReconnect() with backoff+jitter
+    CA->>WS: connect() (needs getToken()) → open → {action:"auth", token}
+    TB->>WS: subscribe("timer.*") and N subscribe("notification.created"), queued until auth
+    S-->>WS: {action:"auth.success"} → authenticated=true, resubscribeAll() sends x4 subscribe
+    S-->>WS: {event:"timer.updated"|"notification.created", data} → TB applyTimerEvent() / N prepend if id unknown
+    S-->>WS: close (deploy/restart) → connected=false, scheduleReconnect() backoff+jitter
     N->>N: watch(connected) false → loadNotifications() over REST
 ```
 
@@ -127,16 +116,16 @@ The `authenticated` ref is exported but no consumer outside the composable reads
 | `frontend/src/sentry.test.ts` | image-load capture, skipping blank/fragment `src` | `pnpm vitest run src/sentry.test.ts` |
 | `frontend/src/helpers/handleChunkLoadErrors.test.ts` | reload cooldown | `pnpm vitest run src/helpers/handleChunkLoadErrors.test.ts` |
 | `frontend/src/stores/timeTracking.test.ts` | store reconciliation incl. `hydrateActiveTimer` | `pnpm vitest run src/stores/timeTracking.test.ts` |
-| `frontend/tests/e2e/websocket/protocol.spec.ts` (12 tests) | raw protocol: auth, timeout, double auth, subscribe/unsubscribe, delivery, doer exclusion, multi-connection | `VIKUNJA_E2E_API_PORT=3456 mage test:e2e "tests/e2e/websocket"` |
+| `frontend/tests/e2e/websocket/protocol.spec.ts` (11 tests) | raw protocol: auth, timeout, double auth, subscribe/unsubscribe, delivery, doer exclusion, multi-connection | `VIKUNJA_E2E_API_PORT=3456 mage test:e2e "tests/e2e/websocket"` |
 | `frontend/tests/e2e/websocket/frontend.spec.ts` (3), `comment-notification.spec.ts` (1) | bell badge and dropdown update in real time; UI after logout; mention notification | same |
 
 Not covered at unit level: `useWebSocket.ts` itself (backoff, terminal errors, resubscribe), `sw.ts`, `UpdateNotification.vue`. `App.test.ts` and the `auth.*.test.ts` files mock `useWebSocket`. The logout e2e test only checks the bell disappears, not that the socket closed.
 
 ## Gotchas and tech debt
 
-- PWA manifest `shortcuts` point at dead routes `/namespaces`, `/tasks/by/week`, and `/tasks/by/month` (`vite.config.ts:202-216`); the router only has `/tasks/by/upcoming` (`src/router/index.ts:225`). `/` and `/teams` still exist.
-- `sw.ts:64-67` precaches twice: `precacheAndRoute(self.__WB_MANIFEST)` (line 15, the injectManifest slot) and a legacy `self.__precacheManifest` block that is always empty.
-- Top-level `output.manualChunks` for `sentry` in `vite.config.ts:245` sits outside `build.rollupOptions`; Unverified whether Rollup honours it (flagged in [Known issues](../../13-known-issues.md)).
+- PWA manifest `shortcuts` point at dead routes `/namespaces`, `/tasks/by/week`, and `/tasks/by/month` (`vite.config.ts:197-216`); the router only has `/tasks/by/upcoming` (`src/router/index.ts:225`). `/` and `/teams` still exist.
+- `sw.ts:66-67` precaches twice: `precacheAndRoute(self.__WB_MANIFEST)` (line 15, the injectManifest slot) and a legacy `self.__precacheManifest` block that is always empty.
+- Top-level `output.manualChunks` for `sentry` in `vite.config.ts:246` sits outside `build.rollupOptions`; Unverified whether Rollup honours it (flagged in [Known issues](../../13-known-issues.md)).
 - Socket URL is derived from the v1 API URL, so a deployment that only exposes `/api/v2` would break realtime. Unverified whether such deployments exist.
 - `UpdateNotification.vue:63` and `AddToHomeScreen.vue:51`: `// FIXME: We should prevent usage of z-index or at least define it centrally` (both use 5000).
 - `ContentAuth.vue:118` `// FIXME: this is really error prone` (route-name based title logic), `:141` `// TODO: Reset the title if the page component does not set one itself`.

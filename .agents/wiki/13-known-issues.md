@@ -73,9 +73,9 @@ Frontend: about 50 markers in `frontend/src`. Highest signal:
 
 | Concept | Go | TypeScript | Drift found |
 |---|---|---|---|
-| Error codes | 162 `ErrCode*` constants | 107 numeric keys under `error` in `en.json` | **56 codes have no frontend string** (e.g. 1 generic forbidden, 11 invalid token, 1026, 1030, 1031, 2004, 3010, 3014, 4024); key `0001` is zero-padded and can never match code `1`. `mage check:translations` whitelists the dynamic `error.` prefix, so CI cannot see this |
+| Error codes | 162 `ErrCode*` constants | 107 numeric keys under `error` in `en.json` | **56 codes have no frontend string** (e.g. 11 invalid token, 1026, 1030, 1031, 2004, 3010, 3014, 4024, plus `ErrorCodeGenericForbidden`, whose Go literal `0001` is the number 1 while the JSON key is the string `"0001"`, so it never matches). The `handler.ErrReadForbidden` 403 carries no code at all (`code: 0`). `mage check:translations` whitelists the dynamic `error.` prefix, so CI cannot see this |
 | Relation kinds | 12 values incl. `duplicateof` | 10 values, `PROCEDES` typo | `duplicateof` unreachable from the UI |
-| Priorities | none (bare `int64`; CalDAV maps 0–9 in `pkg/caldav/parsing.go`) | `PRIORITIES` 0–5 | Ladder exists only in TS |
+| Priorities | none (bare `int64`; CalDAV maps 0–9 in `pkg/caldav/priority.go`) | `PRIORITIES` 0–5 | Ladder exists only in TS |
 | Repeat modes, view kinds, bucket modes, permissions, auth types, pro features, reminder anchors | `iota` enums | hand-written objects | In sync today; no generator |
 | Filter DSL | `task_collection_filter.go` | `helpers/filters.ts`, `FilterAutocomplete.ts` | `subTableFilters` lists `label_id`, `parent_project`, `parent_project_id` that `validateTaskField` never accepts (dead) |
 | Locales | `pkg/i18n/i18n.go` `availableLanguages` | `SUPPORTED_LOCALES`, `useDayjsLanguageSync.ts` | `fa-IR` is selectable in the frontend but missing from the Go allowlist; six frontend JSON files (`ca-ES`, `eo-UY`, `ro-RO`, `sk-SK`, `sr-CS`, `th-TH`) exist but are not selectable |
@@ -100,10 +100,10 @@ Frontend: about 50 markers in `frontend/src`. Highest signal:
 ## Architectural debt
 
 - **In-process, non-durable event bus** (`pkg/events`): restarts lose in-flight webhooks, notifications, imports; no cross-instance delivery; poison queue is log-only. `BootedEvent` is dispatched after the blocking router start and has no listener.
-- **Two frontend API layers**: 120 files on legacy services vs 24 on the generated client; only labels are on TanStack Query.
+- **Two frontend API layers**: 120 files on legacy services vs 23 on the generated client; only labels are on TanStack Query.
 - **Two API versions** with different validation status codes (412 vs 422) and different verb semantics.
 - **`pkg/cron`** has no error plumbing, naming, overlap protection, or metrics; `log.Errorf` in a cron job never reaches Sentry.
-- **Migrations**: `modifyColumn` is a no-op on SQLite; `renameTable`'s Postgres branch uses backtick quoting (Unverified whether any migration hits it); `IsUniqueConstraintError`'s SQLite branch matches any message containing `task_buckets`.
+- **Migrations**: `modifyColumn` is a no-op on SQLite; `IsUniqueConstraintError`'s SQLite branch matches any message containing `task_buckets`. (`renameTable`'s backtick quoting is safe: xorm rewrites quotes per dialect on raw `Exec`, and migration `20221113170740` exercises it on all three databases.)
 - **`pkg/models/error.go`** is a 2,886-line flat list; codes are chosen by hand.
 - **Refresh cookies per API version** and JWT invalidation on secret regeneration are easy to trip over in deployments.
 
@@ -127,7 +127,7 @@ Frontend: about 50 markers in `frontend/src`. Highest signal:
 | `pkg/web/handler/read_all.go` | `service.maxitemsperpage` clamp applies to v1 only; v2 caps `per_page` at 1000 in `ListParams` |
 | `frontend/src/stores/viewFilters.ts` | The only store without the `acceptHMRUpdate` block |
 | `frontend/src/stores/tasks.ts` → `addTaskAttachment` | No callers outside the store |
-| `pkg/config/config.go` → `files.s3.tempdir` | Declared and documented, never read |
+| `pkg/config/config.go` → `files.s3.tempdir` | Declared with a default, absent from `config-raw.json`, never read by any code |
 | `frontend/src/views/migrate/migrators.ts` | Still lists `wunderlist`; no backend importer provides it (filtered out by `/info`) |
 | `pkg/plugins/registry.go` | `Registry`/`NewRegistry` have no callers; `Manager` keeps its own slices |
 | `pkg/files/files.go` → `File.Delete`, `Dump` | Delete swallows `*os.PathError` from blob removal; Dump skips rows without blobs, both can hide orphaned files |
@@ -148,7 +148,7 @@ Frontend: about 50 markers in `frontend/src`. Highest signal:
 | `frontend/src/styles/tailwind.css` | Tailwind v4 is wired (with a `tw-` prefix) but no component uses a `tw-` class; `tsconfig.app.json` lists a nonexistent `tailwind.config.js` |
 | `frontend/src/styles/custom-properties/shadows.scss` | Dark-mode block lacks the `@media screen` guard that `colors.scss` uses, so dark shadows may print (Unverified) |
 | `frontend/src/styles/README.md` | Presents `tw-` utilities as in use |
-| `frontend/src/histoire.setup.ts:14` | Imports `@/components/input/button.vue` (lowercase) while the file is `Button.vue`; breaks on case-sensitive filesystems |
+| `frontend/src/histoire.setup.ts:13` | Imports `@/components/input/button.vue` (lowercase) while the file is `Button.vue`; breaks on case-sensitive filesystems |
 | `frontend/src/router/index.ts` | `filter.settings.edit`/`.delete` reuse the paths of `project.settings.edit`/`.delete`; `scrollBehavior` returns `inset-inline-start`/`inset-block-start` keys (Unverified: honored by vue-router) |
 | `frontend/src/helpers/checkAndSetApiUrl.ts` | Two consecutive `+ /api/v1` probe steps whose comments claim http vs https but neither changes the scheme |
 | `frontend/tests/support/seed.ts` vs `factory.ts` | Two seeding helpers reading different env var names (`TEST_SECRET` vs `VIKUNJA_SERVICE_TESTINGTOKEN`) |
@@ -167,14 +167,13 @@ Frontend: about 50 markers in `frontend/src`. Highest signal:
 
 Fixed in this branch (see git log for `.agents/docs` and `.agents/skills`): the "plain `go test` does not work" wording, the `api-v2-routes` skill's stale `mage test:filter` caveat, the `migration` skill telling you to extend `modelTypes`, the `run-e2e-tests` skill missing `VIKUNJA_E2E_API_PORT`, `dev-commands.md` missing the generation targets and the gitignored sample, `git-workflow.md` not saying `prepare-worktree` moves the plan, and `sentry-triage` depending on tooling outside the repo.
 
-Still to decide by a maintainer: `pkg/web/readme.md` reads as a standalone library README with an LGPL badge; `frontend/docs/models-services.md` has no legacy warning; `AGENTS.md`/`CLAUDE.md` duplication (resolved in this branch by making `CLAUDE.md` an `@AGENTS.md` include); `.claude/settings.json` allowlist.
+Still to decide by a maintainer: `pkg/web/readme.md` reads as a standalone library README with an LGPL badge; `frontend/docs/models-services.md` has no legacy warning; `.claude/settings.json` allowlist. `CLAUDE.md` was a git symlink to `AGENTS.md` and is now a one-line `@AGENTS.md` include, so the two cannot drift.
 
 ## Could not determine
 
 - Whether any production deployment runs more than one API instance (which would make the in-process event bus a correctness problem rather than a durability one).
 - Whether vue-router honors the logical-property keys returned by `scrollBehavior`.
 - Whether the top-level `output.manualChunks` in `vite.config.ts` has any effect.
-- Whether the Postgres branch of `renameTable` is reachable by any shipped migration.
 - Whether `ErrRelationAlreadyExists`'s one-directional check is covered by a DB constraint.
 - Which of the 56 untranslated error codes users actually see (depends on which endpoints raise them through the UI).
 - How CI's fully commented `config.yml.sample` interacts with `build/after-install.sh`.

@@ -33,7 +33,7 @@
 | `FieldsOptionalByDefault = true` | schema stays permissive so partial bodies match v1; presence rules come from `valid:` tags via `validateInputBody` |
 | `Formats[application/x-www-form-urlencoded] = formURLEncodedFormat` | request-only format that re-marshals form values to JSON (OAuth token endpoint, RFC 6749); the default map is copied, not mutated |
 | `Info.Description = richTextFormatAPIDescription` | Scalar landing text about `?format=markdown` |
-| Security schemes | `JWTKeyAuth` (bearer JWT), `APITokenAuth` (bearer `tk_`), `BasicAuth` (Atom feed only); `oapi.Security` applies JWT and API token globally; public ops set `Security: []map[string][]string{}` (`health.go`, `info.go`, `testing.go`, `invite_links.go`) **and** must be listed in `unauthenticatedAPIPaths` |
+| Security schemes | `JWTKeyAuth` (bearer JWT), `APITokenAuth` (bearer `tk_`), `BasicAuth` (Atom feed only); `oapi.Security` applies JWT and API token globally; public ops set `Security: []map[string][]string{}` (`health.go`, `info.go`, `testing.go`, and the `publicSecurity` var shared by `auth_public.go`, `invite_links.go`) **and** must be listed in `unauthenticatedAPIPaths` |
 | `Servers` | `[{URL: "/api/v2"}, {URL: publicURL + "/api/v2"}]`. **Index 0 must stay relative**: Huma's `SchemaLinkTransformer` reads `Servers[0]` and would double-prefix `$schema` links otherwise (comment in `huma.go`) |
 
 `Register` sets `DefaultStatus` from the verb when unset (POST → 201, DELETE → 204), wraps the handler with `validateInputBody`, and forwards to `huma.Register`. So v2 validates-then-authorizes exactly like v1. `withUploadLimits(op)` sets `MaxBodyBytes = (maxfilesize + 2) MB` and `BodyReadTimeout = 15m` for multipart uploads (Huma's default 5 s read deadline spans the whole body). Echo's global `BodyLimit` still applies on top.
@@ -94,24 +94,15 @@ Per-resource read bodies embed the model by value plus `MaxPermission` (`labels.
 sequenceDiagram
     participant C as Client
     participant MW as Echo group middleware (SetupTokenMiddleware)
-    participant AP as AutoPatch PATCH handler
-    participant GP as humabridge.groupPrefixAdapter
-    participant G as GET handler (labelsRead)
-    participant P as PUT handler (labelsUpdate)
-    C->>MW: PATCH /api/v2/labels/1 (merge-patch+json, Bearer tk_...)
-    MW->>MW: CanDoAPIRoute: PATCH accepted as alias of stored PUT (api_routes.go)
-    MW->>AP: dispatch; RecordAPITokenUse (client request)
-    AP->>GP: internal GET /labels/1 (headers copied, query dropped)
-    GP->>GP: prefix -> /api/v2/labels/1, mark InternalDispatchRoute = "/api/v2/labels/:id"
-    GP->>MW: re-enter router
-    MW->>MW: shouldSkipRouteCheck: GET, no query, route == c.Path() -> skip; no usage event
-    MW->>G: labelsRead -> DoReadOne -> body + ETag
-    AP->>AP: JSON merge patch onto GET body
-    AP->>GP: internal PUT /labels/1 (If-Match ETag)
-    GP->>MW: re-enter router
-    MW->>MW: route check runs normally (PUT must be authorised)
-    MW->>P: labelsUpdate -> validateInputBody -> DoUpdate
-    P-->>C: 200 singleBody (or 304 when nothing changed)
+    participant AP as AutoPatch PATCH handler (via humabridge.groupPrefixAdapter)
+    participant H as labelsRead / labelsUpdate
+    C->>MW: PATCH /api/v2/labels/1 (merge-patch+json, Bearer tk_...) — CanDoAPIRoute accepts PATCH as alias of stored PUT; RecordAPITokenUse
+    MW->>AP: dispatch
+    AP->>MW: internal GET /labels/1 (headers copied, query dropped); adapter prefixes /api/v2 and marks InternalDispatchRoute = "/api/v2/labels/:id"; shouldSkipRouteCheck → skip, no usage event
+    MW->>H: labelsRead → DoReadOne → body + ETag; AutoPatch merge-patches the body
+    AP->>MW: internal PUT /labels/1 (If-Match ETag); route check runs normally (PUT must be authorised)
+    MW->>H: labelsUpdate → validateInputBody → DoUpdate
+    H-->>C: 200 singleBody (or 304 when nothing changed)
 ```
 
 API-token treatment (`pkg/routes/api_tokens.go` → `shouldSkipRouteCheck`, `checkAPITokenAndPutItInContext`): the GET leg inherits the PATCH's authorisation only when it is a bare GET with no query on the same route template it was authorised against; both internal legs skip `RecordAPITokenUse`. `CollectRoutesForAPITokenUsage` stores only the PUT (PATCH would clobber the `update` key) and `tokenAuthorizesRoute` accepts PATCH as its alias.

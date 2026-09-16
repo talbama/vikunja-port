@@ -44,7 +44,7 @@ Files and symbols:
 | Token issue | `pkg/modules/auth/auth.go` → `NewUserAuthTokenResponse` → `IssueUserToken` → `models.CreateSession`, `NewUserJWTAuthtoken`, `SetRefreshTokenCookie` |
 | Post-login | `authStore.checkAuth()` decodes the JWT and calls `refreshUserInfo()` (`GET /user`), then `App.vue` switches to the authenticated layout and `ContentAuth.vue` connects the websocket |
 
-The v2 path (`POST /api/v2/login`) shares `AuthenticateUserCredentials` and `IssueUserToken`; only the handler file differs (`pkg/routes/api/v2/`). Expired JWTs later trigger the refresh flow in [API contract](05-api-contract.md#auth-and-session-flow).
+The v2 path (`POST /api/v2/login`) shares `AuthenticateUserCredentials` and `IssueUserToken`; only the handler file differs (`pkg/routes/api/v2/auth_login.go`). Expired JWTs later trigger the refresh flow in [API contract](05-api-contract.md#auth-and-session-flow).
 
 ## 2. Create a task from the list view (legacy stack)
 
@@ -138,7 +138,7 @@ Files and symbols:
 | Handler | `pkg/routes/api/v2/labels.go` → `labelsCreate`; registered by `RegisterLabelRoutes` via `init()` → `AddRouteRegistrar` |
 | Pipeline and model | `pkg/web/handler/core.go` → `DoCreate`; `pkg/models/label_permissions.go` → `CanCreate`; `pkg/models/label.go` → `Create` |
 | Errors | `translateDomainError` → problem+json; a `minLength:"1"` violation is rejected by Huma with 422 before the handler runs |
-| Readers | `frontend/src/composables/useLabels.ts` → `useQuery(labelsQuery())` in `ListLabels.vue`, `EditLabels.vue`, filter autocomplete |
+| Readers | `frontend/src/composables/useLabels.ts` → `useQuery(labelsQuery())` in `ListLabels.vue` and the filter autocomplete (`FilterInput.vue`, `FilterAutocomplete.ts`) |
 
 Verified with curl on 2026-09-16: `POST /api/v2/labels {"title":"wiki-label"}` → 201; `{"title":""}` → 422.
 
@@ -167,7 +167,7 @@ sequenceDiagram
     K->>KS: setTaskInBucket / ensureTaskIsInCorrectBucket
 ```
 
-Files and symbols: `frontend/src/components/project/views/ProjectKanban.vue` → `updateTaskPosition` (line ~547), `frontend/src/helpers/calculateItemPosition.ts`, `frontend/src/stores/kanban.ts` → `moveTaskToBucket`, `setBucketById`, `ensureTaskIsInCorrectBucket`; backend `pkg/routes/routes.go` lines ~735 and ~971, `pkg/models/kanban_task_bucket.go` → `Update` (done-bucket logic around lines 141–209), `pkg/models/task_position.go` → `Update`, `RecalculateTaskPositions`. Both writes are separate requests; a failure of the second leaves the position changed but the bucket not, which the store repairs on the next bucket load.
+Files and symbols: `frontend/src/components/project/views/ProjectKanban.vue` → `updateTaskPosition` (line ~547), `frontend/src/helpers/calculateItemPosition.ts`, `frontend/src/stores/kanban.ts` → `moveTaskToBucket`, `setBucketById`, `ensureTaskIsInCorrectBucket`; backend `pkg/routes/routes.go` lines ~735 and ~971, `pkg/models/kanban_task_bucket.go` → `Update` (line ~248) → `updateTaskBucket` (done-bucket logic around lines 138–210), `pkg/models/task_position.go` → `Update`, `RecalculateTaskPositions`. Both writes are separate requests; a failure of the second leaves the position changed but the bucket not, which the store repairs on the next bucket load.
 
 ## 5. Background: comment → notification → mail, bell, websocket
 

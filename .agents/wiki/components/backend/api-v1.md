@@ -90,7 +90,7 @@ The `*Web` methods bind path/query/body into the model (`c.Bind`), run `ctx.Vali
 | `user_webhooks.go` | `GetUserWebhooks`, `CreateUserWebhook`, `UpdateUserWebhook`, `DeleteUserWebhook`, `GetUserDirectedWebhookEvents` (user-level webhooks, gated by `webhooks.enabled`) |
 | `webhooks.go` | `GetAvailableWebhookEvents` → `models.GetAvailableWebhookEvents()` |
 
-`pkg/routes/api/v1/admin/`: `overview.go` → `GetOverview`; `users.go` → `UserList` (CObject); `user_create.go` → `CreateUser`; `users_admin.go` → `PatchAdmin` (`IsAdminPatch`); `users_mgmt.go` → `PatchStatus` (`StatusPatch`), `DeleteUser`; `projects.go` → `PatchProjectOwner` (`OwnerPatch`). Note these admin routes already use `PATCH`, the one place v1 does.
+`pkg/routes/api/v1/admin/`: `overview.go` → `GetOverview`; `users.go` → `UserList` (CObject); `user_create.go` → `CreateUser`; `users_admin.go` → `PatchAdmin` (`IsAdminPatch`); `users_mgmt.go` → `PatchStatus` (`StatusPatch`), `DeleteUser`; `projects.go` → `PatchProjectOwner` (`OwnerPatch`). Note these admin routes already use `PATCH`; the only other v1 `PATCH` is the testing route `n.PATCH("/test/:table")`.
 
 ### Swagger annotations and `pkg/swagger/`
 
@@ -119,12 +119,10 @@ flowchart LR
     R --> UR["ur: register, login, password, openid, shares auth"]
     R --> TR["tr: token refresh, oauth token"]
     R --> A["a + SetupTokenMiddleware"]
-    A --> U["/user group"]
+    A --> U["/user group, /migration, /plugins"]
     A --> W["WebHandler CRUD routes"]
     A --> C["custom apiv1.* handlers"]
-    A --> M["/migration"]
     A --> AD["/admin (feature + admin gate)"]
-    A --> P["/plugins"]
     W --> DO["handler.Do* → model Can* + CRUD"]
     C --> DO
 ```
@@ -159,7 +157,7 @@ Handlers return Go errors; `pkg/routes/error_handler.go` → `CreateHTTPErrorHan
 ## Tests
 
 - `pkg/webtests/<resource>_test.go` drive `WebHandler` routes through `webHandlerTest` (`pkg/webtests/integrations.go`, `testReadAllWithUser`, `testCreateWithLinkShare`, ...). Run one with `go test -run 'TestLabel' ./pkg/webtests/` (`mage test:filter` passes `-short`, which skips webtests; see the `api-v2-routes` skill).
-- Custom handlers: `pkg/routes/api/v1/*_test.go` where present; `pkg/routes/error_handler_test.go`, `rate_limit_test.go`, `static_test.go`.
+- Custom handlers: there are no `_test.go` files in `pkg/routes/api/v1/` or `pkg/routes/api/v1/admin/`; they are covered only through `pkg/webtests`. Routing-level tests: `pkg/routes/error_handler_test.go`, `rate_limit_test.go`, `static_test.go`.
 - Swagger is not tested for accuracy; only staleness (`mage check:got-swag`).
 
 ## Gotchas and tech debt

@@ -16,8 +16,8 @@ Two small languages the frontend parses on behalf of the user: the **task filter
 | `FilterPopup.vue` (`modelValue`, `projectId?`, `viewId?`) | `frontend/src/components/project/partials/FilterPopup.vue` | `components/project/views/ProjectList.vue`, `ProjectTable.vue`, `ProjectKanban.vue` (see [project-views](./project-views.md)) |
 | `transformFilterStringForApi(filter, labelResolver, projectResolver)` / `transformFilterStringFromApi(filter, labelResolver, projectResolver)` | `frontend/src/helpers/filters.ts` | `FilterInput.vue`, `Filters.vue` |
 | `AVAILABLE_FILTER_FIELDS`, `DATE_FIELDS`, `AUTOCOMPLETE_FIELDS`, `FILTER_OPERATORS`, `FILTER_JOIN_OPERATOR`, `FILTER_OPERATORS_REGEX`, `hasFilterQuery`, `isMultiValueOperator`, `getFilterFieldRegexPattern` | `frontend/src/helpers/filters.ts` | `FilterAutocomplete.ts`, `highlighter.ts`, `Filters.vue` |
-| `useRouteFilters(route, getDefaultFilters, routeToFilters, filtersToRoute, routeAllowList)` | `frontend/src/composables/useRouteFilters.ts` | `views/project/helpers/useGanttFilters.ts`, `components/project/ProjectWrapper.vue` |
-| `useViewFiltersStore()` (`setViewQuery`, `getViewQuery`, `clearViewQuery`) | `frontend/src/stores/viewFilters.ts` | `composables/useTaskList.ts` |
+| `useRouteFilters(route, getDefaultFilters, routeToFilters, filtersToRoute, routeAllowList)` | `frontend/src/composables/useRouteFilters.ts` | `views/project/helpers/useGanttFilters.ts`, `views/project/helpers/useGanttTaskList.ts` |
+| `useViewFiltersStore()` (`setViewQuery`, `getViewQuery`, `clearViewQuery`) | `frontend/src/stores/viewFilters.ts` | `composables/useTaskList.ts`, `components/project/ProjectWrapper.vue`, `views/project/helpers/useGanttFilters.ts` |
 | `useSavedFilter(projectId?)` | `frontend/src/services/savedFilter.ts` (legacy service + composable) | `views/filters/*.vue` |
 | `parseTaskText(text, mode = PrefixMode.Default, now = new Date())`, `PREFIXES`, `PrefixMode`, `cleanupItemText`, `getLabelsFromPrefix`, `getProjectFromPrefix` | `frontend/src/modules/quickAddMagic/index.ts` | `stores/tasks.ts`, `QuickActions.vue`, `QuickAddMagic.vue`, `views/user/settings/General.vue` |
 | `taskStore.buildTaskFromQuickAddTitle`, `createNewTask`, `createNewTasksBulk`, `addLabelsToTask` | `frontend/src/stores/tasks.ts` | `createNewTask`: `RelatedTasks.vue`, `QuickActions.vue`, `ProjectKanban.vue`; `createNewTasksBulk`: `components/tasks/AddTask.vue` (multi-line paste) |
@@ -52,7 +52,7 @@ Model sync: `onUpdate` → `transformFilterStringForApi(getText())` → `emit('u
 
 ### Filters and persistence
 
-- `Filters.vue` → `change(event)`: `changeImmediately` (saved-filter forms) applies on every model change, otherwise only on blur, so project views never show the id-substituted string mid-typing. No operator → the text becomes `s`, not `filter`. Shows `FilterInputDocs.vue` (collapsible field/operator/example reference) and `filterFromView` (the view's own filter, read-only).
+- `Filters.vue` → `change(event)`: `changeImmediately` (saved-filter forms) applies on every model change, otherwise only on blur, so project views never show the id-substituted string mid-typing. No operator → the text becomes `s`, not `filter`. Shows `components/input/filter/FilterInputDocs.vue` (collapsible field/operator/example reference) and `filterFromView` (the view's own filter, read-only).
 - `FilterPopup.vue` wraps `Filters.vue` in a modal, focuses the input on open, and reads the view filter from `projectStore.projects[projectId].views`.
 - `useRouteFilters` keeps a `filters` ref and the URL in sync in both directions (`router.push` when filters change, `routeToFilters` when the route changes on an allow-listed route name) and exposes `hasDefaultFilters`/`setDefaultFilters`.
 - `stores/viewFilters.ts` stores `{sort, filter, s, page}` per view id in `localStorage.viewFilters`; `useTaskList.ts` restores it with `router.replace` when the view changes and the URL carries no query, otherwise writes the URL query into the store. **URL wins.** `filter_timezone` is always `authStore.settings.timezone` (`useTaskList.ts:225`, `stores/tasks.ts:174`, `stores/kanban.ts:312`).
@@ -144,11 +144,11 @@ Filter parse errors come back as v1 `ErrInvalidTaskFilterComparator` / `ErrInval
 | e2e `tests/e2e/project/filter-persistence.spec.ts` | list/table/kanban filters survive reload; URL sharing |
 | e2e `tests/e2e/task/related-tasks-quick-add-magic.spec.ts`, `quick-add-default-reminders.spec.ts` | `*label` on related tasks; default reminders attached on a parsed due date |
 
-Run: `pnpm vitest run src/helpers/filters.test.ts src/components/input/filter src/modules/quickAddMagic`. Not covered: `Filters.vue` blur/immediate switching, `useRouteFilters`, `viewFilters` store (only via e2e).
+Run: `pnpm vitest run src/helpers/filters.test.ts src/components/input/filter src/modules/quickAddMagic`. Not covered by unit tests: `Filters.vue` blur/immediate switching (e2e only). `useRouteFilters` and the `viewFilters` store have their own unit tests (`composables/useRouteFilters.test.ts`, `stores/viewFilters.test.ts`).
 
 ## Gotchas and tech debt
 
-- `FilterInput.vue` is a hotspot (`git log --follow` shows a long run of `fix(filters)` commits; 7 on the current path alone). Most were cursor resets, label-loading races and the HTML-injection fix; test both `FilterInput.test.ts` and the autocomplete e2e after touching it.
+- `FilterInput.vue` is a hotspot (`git log --follow` shows a long run of `fix` commits; 7 on the current path alone). Most were cursor resets, label-loading races and the HTML-injection fix; test both `FilterInput.test.ts` and the autocomplete e2e after touching it.
 - `transformFilterStringFromApi` does `replaceAll(snakeCase(field), field)` on the whole string, so a label or project *title* containing `due_date` would be rewritten too.
 - `hasFilterQuery` returns a string, not a boolean; callers use it truthily.
 - `blurDebounced` in `FilterInput.vue` is an empty `useDebounceFn` (dead code).
@@ -159,4 +159,4 @@ Run: `pnpm vitest run src/helpers/filters.test.ts src/components/input/filter sr
 
 ## Related pages
 
-[project-views](./project-views.md), [stores](./stores.md) (`tasks`, `viewFilters`), [api-client-generated-and-queries](./api-client-generated-and-queries.md) (labels cache), [user-settings-and-admin](./user-settings-and-admin.md) (quick add mode, timezone, default reminders), [i18n-and-formatting](./i18n-and-formatting.md) (date formatting), backend [models-filtering-and-search](../backend/models-filtering-and-search.md), [Data flows](../../10-data-flows.md#task-creation), [playbooks/build-vue-feature](../../playbooks/build-vue-feature.md).
+[project-views](./project-views.md), [stores](./stores.md) (`tasks`, `viewFilters`), [api-client-generated-and-queries](./api-client-generated-and-queries.md) (labels cache), [user-settings-and-admin](./user-settings-and-admin.md) (quick add mode, timezone, default reminders), [i18n-and-formatting](./i18n-and-formatting.md) (date formatting), backend [models-filtering-and-search](../backend/models-filtering-and-search.md), [Data flows](../../10-data-flows.md#2-create-a-task-from-the-list-view-legacy-stack), [playbooks/build-vue-feature](../../playbooks/build-vue-feature.md).

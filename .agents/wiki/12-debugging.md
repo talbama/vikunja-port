@@ -42,7 +42,7 @@ Error messages you will meet, what causes them, and the tools for looking inside
 | Login page shows `Request failed with status code 404` | The SPA posted to a relative `/api/v1` on a host that does not proxy it and the port-3456 fallback found nothing | `frontend/src/helpers/checkAndSetApiUrl.ts`; set `DEV_PROXY` or the API URL in the UI |
 | "Using Vikunja installation at ..." with a "change" button and errors | API URL discovery failed → `NoApiUrlProvidedError` / `InvalidApiUrlProvidedError` | `Ready.vue`, `ApiConfig.vue` |
 | Endless redirect between `/share/:hash/auth` and a project | Link-share and user tokens share an id space; fixed by comparing `type` too in `checkAuth` | `frontend/src/stores/auth.ts` |
-| Toast shows a raw English server message | No `error.<code>` key in `en.json` for that code | Add the key; see [Known issues](13-known-issues.md#error-codes) |
+| Toast shows a raw English server message | No `error.<code>` key in `en.json` for that code | Add the key; see [Known issues](13-known-issues.md#knowledge-duplicated-by-hand-across-sides) |
 | `VIKUNJA_OPENAPI_INPUT must point to the generated temporary spec` | `pnpm generate:api-client` run directly | Use `mage generate:frontend-client` |
 | `mage check:frontend-client` fails | Generated client out of date or generation not idempotent | Regenerate and commit |
 | Stale JS after deploy, chunk load errors | Old service worker or split chunks | `handleChunkLoadErrors.ts` reloads once; `UpdateNotification.vue` prompts |

@@ -63,25 +63,16 @@ Project views (`project_views`) decide how a project's tasks are presented; kanb
 sequenceDiagram
     participant UI as ProjectKanban.vue (drag end)
     participant P as PUT /tasks/{task}/position
-    participant B as PUT /projects/{p}/views/{v}/buckets/{b}/tasks
+    participant B as PUT .../buckets/{b}/tasks
     participant M as models.updateTaskBucket
-    participant DB as task_buckets / tasks
-    UI->>UI: position = midpoint(neighbours); optimistic count -1/+1
-    UI->>P: TaskPositionService.update {task_id, project_view_id, position}
+    UI->>P: position = midpoint(neighbours); optimistic count -1/+1
     P-->>UI: position (may differ after recalculation)
-    alt bucket changed
-        UI->>B: TaskBucketService.update {task_id}
-        B->>M: handler.DoUpdate (CanUpdate: bucket.canDoBucket && task.CanWrite)
-        M->>DB: read current row; no-op if same bucket
-        M->>M: view + bucket must match (10002); task.ReadOne
-        M->>M: checkBucketLimit when bucket changes (10004)
-        M->>M: done bucket in? done=true (repeating: updateDone, reroute to DefaultBucketID or stay)
-        M->>M: done bucket out? done=false
-        M->>DB: UPDATE tasks done, due_date, start_date, end_date, done_at; updateReminders
-        M->>DB: upsert done bucket in every other manual kanban view (when now done)
-        M->>DB: upsert task_buckets (task_id, view) → bucket
-        M-->>UI: {task, bucket{count}}; TaskUpdatedEvent on commit
-    end
+    UI->>B: bucket changed? TaskBucketService.update {task_id}
+    B->>M: DoUpdate (CanUpdate: bucket.canDoBucket && task.CanWrite)
+    M->>M: no-op if same bucket; view+bucket must match (10002); checkBucketLimit on change (10004)
+    M->>M: into done bucket → done=true (repeating: updateDone, reroute to DefaultBucketID); out → done=false
+    M->>M: UPDATE tasks done/dates/done_at, updateReminders; upsert done bucket in other manual kanban views; upsert task_buckets
+    M-->>UI: {task, bucket{count}}; TaskUpdatedEvent on commit
 ```
 
 - `TaskBucket.CanUpdate` checks the bucket through `canDoBucket` and the task through `Task.CanWrite`, because the body's task may live in another project.

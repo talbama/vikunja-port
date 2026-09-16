@@ -8,7 +8,7 @@ Directory-by-directory guide. For each area: what lives there, what must not go 
 |---|---|---|
 | `main.go` | Entry point, calls `cmd.Execute()` | Nothing else belongs here |
 | `magefile.go` | All backend build/test/lint/generate/dev tasks (`mage -l`) | Targets documented in [Build and release](components/build-and-release.md) |
-| `go.mod`, `go.sum` | Module `code.vikunja.io/api`, Go 1.27 | Dependency updates come from Renovate; a `tool` block pins `mage` and `swag` |
+| `go.mod`, `go.sum` | Module `code.vikunja.io/api`, Go 1.27 | Dependency updates come from Renovate; a `tool` block pins `mage`, `swag`, and `xgo` |
 | `config-raw.json` | **Source of truth for configuration docs and defaults** | Edit this, then `mage generate:config-yaml false` |
 | `config.yml.sample` | Generated from `config-raw.json`; **gitignored** | A fresh clone has none until you generate it |
 | `config.yml` | Your local config; gitignored | Viper also searches `/etc/vikunja/`, `~/.config/vikunja/`, and `service.rootpath` |
@@ -53,7 +53,7 @@ Dependency direction is bottom-up: nothing in a lower row imports a higher row.
 
 - No new routes in `pkg/routes/api/v1/`. v1 is frozen; bug fixes and ports only. New routes go in `pkg/routes/api/v2/<resource>.go` and self-register via `init()` → `AddRouteRegistrar`.
 - No permission checks in `pkg/routes/`. They belong on the model as `Can*` methods. The single exception is a non-CRUD v2 action, which has no `Do*` wrapper and must call `Can*` itself.
-- No raw SQL strings anywhere, including migrations and tests. Use the XORM builder. `pkg/migration/` additionally bans plain `tx.Sync` (drops indexes) in favor of `partialSync` (`.golangci.yml` `forbidigo` rules).
+- No raw SQL strings anywhere, including migrations and tests. Use the XORM builder (`.agents/docs/code-style.md`; not lint-enforced). `.golangci.yml` `forbidigo` rules ban plain `tx.Sync` (drops indexes) in `pkg/migration/` in favor of `partialSync`, and `s.Context(...)` outside `pkg/db` in favor of `db.SetSessionContext`.
 - No models in `pkg/user/` that import `pkg/models`. Put cross-package user logic in `pkg/models` (for example `pkg/models/user_delete.go`) or `pkg/routes/api/shared/`.
 - No edits to `pkg/swagger/` or `pkg/yaegi_symbols/` (except `symbols.go`); CI regenerates them after merge to `main`.
 
@@ -73,8 +73,8 @@ Dependency direction is bottom-up: nothing in a lower row imports a higher row.
 | `src/client/` | **New API layer**: `http.ts` (fetch client + token refresh), `queryClient.ts`, `generated/` (do not edit), `queries/` (TanStack Query option factories), `inviteLink.ts` | [api-client-generated-and-queries](components/frontend/api-client-generated-and-queries.md) |
 | `src/services/`, `src/models/`, `src/modelTypes/` | **Legacy API layer** (axios, camelCase models, `I*` interfaces). Keep working, do not extend for new routes | [api-client-legacy](components/frontend/api-client-legacy.md) |
 | `src/components/` | `base/`, `date/`, `gantt/`, `home/` (app shell), `input/` (form primitives, `editor/` TipTap, `filter/`, `datepicker/`), `misc/` (Modal, Card, Dropdown, keyboard shortcuts...), `notifications/`, `project/` (`views/` list/gantt/table/kanban, `partials/`), `quick-actions/`, `sharing/`, `tasks/` (`partials/` used by task detail), `time-tracking/`, `token/` | feature pages under `components/frontend/` |
-| `src/views/` | Route components by area: `Home.vue`, `project/`, `tasks/`, `user/` (+ `settings/`), `admin/`, `filters/`, `labels/`, `teams/`, `migrate/`, `sharing/`, `time-tracking/`, `about/` | same |
-| `src/composables/` | 30 `use*` composables (`useTaskList`, `useWebSocket`, `useLabels`, `useRouteFilters`, ...) | |
+| `src/views/` | Route components by area: `Home.vue`, `About.vue`, `404.vue`, `project/`, `tasks/`, `user/` (+ `settings/`), `admin/`, `filters/`, `labels/`, `teams/`, `migrate/`, `sharing/`, `time-tracking/` | same |
+| `src/composables/` | 29 `use*` composables (`useTaskList`, `useWebSocket`, `useLabels`, `useRouteFilters`, ...) | |
 | `src/helpers/` | ~80 pure helpers; `time/` has the date math, `filters.ts` the filter DSL transform, `auth.ts` token storage | |
 | `src/modules/quickAddMagic/` | Parser for `*label +project !priority` task syntax | [filters-and-quick-add](components/frontend/filters-and-quick-add.md) |
 | `src/i18n/lang/en.json` | Only translation file you edit; Crowdin fills the other 37 | [Conventions](08-conventions.md#translations) |
@@ -82,7 +82,7 @@ Dependency direction is bottom-up: nothing in a lower row imports a higher row.
 | `src/constants/`, `src/types/` | Enums mirrored by hand from Go (priorities, permissions, repeat modes, view kinds, pro features) | [Data model](06-data-model.md#enums-duplicated-across-sides) |
 | `src/modelSchema/` | One orphaned zod file; nothing imports it | dead code |
 | `tests/e2e/` | Playwright specs by area (`task/`, `project/`, `user/`, `editor/`, `admin/`, `filters/`, `sharing/`, `websocket/`, `misc/`, `time-tracking/`) | [testing-infrastructure](components/frontend/testing-infrastructure.md) |
-| `tests/support/`, `tests/factories/`, `tests/fixtures/` | Playwright fixtures (`fixtures.ts`), DB seeding via the testing token (`factory.ts`), 24 row factories, binary fixtures | same |
+| `tests/support/`, `tests/factories/`, `tests/fixtures/` | Playwright fixtures (`fixtures.ts`), DB seeding via the testing token (`factory.ts`), 25 row factories, binary fixtures | same |
 | `docs/models-services.md` | Describes the **legacy** service layer | historical |
 | `dist/`, `dist-dev/`, `playwright-report/`, `test-results/`, `stats.html` | Build and test output; gitignored | |
 

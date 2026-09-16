@@ -13,7 +13,7 @@ Read this page first, then [Repository map](02-repository-map.md). If you have a
 | CalDAV clients (Tasks.org, Thunderbird, DAVx5) | `/dav/**` and `/.well-known/caldav`, HTTP Basic auth with CalDAV tokens | `pkg/routes/caldav/`, data format in `pkg/caldav/` |
 | Coding agents and scripts | `/api/v2` with API tokens, or the MCP server at `/api/v2/mcp` | `veans/` CLI, `pkg/modules/mcp/` |
 | Other apps | Vikunja as OAuth 2.0 authorization server, webhooks, Atom feeds | `pkg/modules/auth/oauth2server/`, `pkg/models/webhooks.go`, `pkg/routes/feeds/` |
-| Operators | Cobra CLI: `vikunja web|migrate|user|dump|restore|doctor|repair|healthcheck` | `pkg/cmd/` |
+| Operators | Cobra CLI: `vikunja web|migrate|user|dump|restore|doctor|repair|healthcheck|testmail|version` | `pkg/cmd/` |
 
 Vikunja is AGPL-3.0 and fully functional without a license. A license key (`pkg/license/`) unlocks "pro" features such as the admin panel, time tracking, audit logs, and user invites. Do not remove or bypass those checks without confirming with the user first (see [License system](../docs/license.md)).
 
@@ -45,7 +45,7 @@ Vikunja is AGPL-3.0 and fully functional without a license. A license key (`pkg/
 | Auth | HS256 JWT (`golang-jwt/jwt/v5`), refresh sessions, API tokens, link shares, OIDC (`go-oidc`), LDAP (`go-ldap`), TOTP (`pquerna/otp`), OAuth2 server | `pkg/modules/auth/`, `pkg/models/sessions.go`, `pkg/models/api_tokens.go` |
 | Rate limiting | `ulule/limiter` with memory or Redis store | `pkg/routes/rate_limit.go` |
 | Cache / KV | Optional Redis (`go-redis/v9`) or in-memory | `pkg/red/`, `pkg/modules/keyvalue/` |
-| Files | Local disk or S3 (`aws-sdk-go-v2`), afero in tests | `pkg/files/` |
+| Files | Local disk or S3 (`aws-sdk-go-v2`); tests seed files via `files.InitTestFileFixtures` | `pkg/files/` |
 | Mail | `wneessen/go-mail` behind a queue goroutine | `pkg/mail/` |
 | Realtime | `coder/websocket` hub | `pkg/websocket/` |
 | Rich text | goldmark, html-to-markdown, bluemonday | `pkg/richtext/` |
@@ -60,7 +60,7 @@ Vikunja is AGPL-3.0 and fully functional without a license. A license key (`pkg/
 | Concern | Choice | Where |
 |---|---|---|
 | Framework | Vue 3.5, Composition API with `<script setup lang="ts">` enforced by ESLint | `frontend/eslint.config.js` |
-| Language | TypeScript 6 via `vue-tsc` (typecheck has ~1500 pre-existing errors and is non-blocking in CI) | `frontend/tsconfig.app.json` |
+| Language | TypeScript 6 via `vue-tsc` (`pnpm typecheck` reported 1535 pre-existing errors on 2026-09-16; the `frontend-typecheck` job is `continue-on-error: true` in `.github/workflows/test.yml`) | `frontend/tsconfig.app.json` |
 | Build | Vite 8, PWA plugin, Tailwind v4 (prefixed `tw-`), Sass | `frontend/vite.config.ts` |
 | State | Pinia 4, setup-style stores | `frontend/src/stores/` |
 | Server state (new) | TanStack Query 5 (`@tanstack/vue-query`) | `frontend/src/client/queries/` |

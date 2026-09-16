@@ -33,7 +33,7 @@ Everything that turns source into artifacts: the root `magefile.go` (build, test
 | `Check.Golangci`, `Check.GolangciFix` | `lint`, `lint:fix` | `golangci-lint run [--fix]`; error text pins v2.13.0 |
 | `Check.All` | | Golangci + GotSwag + Translations + YaegiSymbols in parallel |
 | `Generate.FrontendClient` | `generate:frontend-client` | `apiv2.NewCanonicalAPI().OpenAPI()` → temp JSON → `pnpm run generate:api-client` with `VIKUNJA_OPENAPI_INPUT` (required by `frontend/openapi-ts.config.ts:3-5`) |
-| `Generate.SwaggerDocs` | `generate:swagger-docs` | installs `swag` if missing, `swag init -g ./pkg/routes/routes.go --parseDependency -o ./pkg/swagger` |
+| `Generate.SwaggerDocs` | `generate:swagger-docs` | installs `swag` if missing, `swag init -g ./pkg/routes/routes.go --parseDependency -d . -o ./pkg/swagger` |
 | `Generate.YaegiSymbols` | `generate:yaegi-symbols` | `go run github.com/traefik/yaegi/cmd/yaegi extract <pkg>` for the 12 entries in `yaegiSymbolPackages`, renames to the checked-in file names; a missing output surfaces as a rename error because `yaegi extract` exits 0 on failure |
 | `Generate.ConfigYAML <bool>` | `generate:config-yaml` | `config-raw.json` → `config.yml.sample` via `convertConfigJSONToYAML`; `true` comments every line out |
 | `Generate.ScalarBundle` | | downloads `@scalar/api-reference@1.44.20` standalone JS from unpkg into `pkg/routes/api/v2/scalar/` |

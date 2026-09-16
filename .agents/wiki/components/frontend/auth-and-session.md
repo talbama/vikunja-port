@@ -75,8 +75,7 @@ sequenceDiagram
     participant R as helpers/auth.ts refreshToken
     participant API
     C->>API: request, Authorization: Bearer old
-    API-->>I: 401 {code: 11}
-    I->>I: token is USER type and identity unchanged?
+    API-->>I: 401 {code: 11}; USER token, identity unchanged?
     I->>R: refreshToken(true) (coalesced, Web Lock)
     R->>API: POST /api/v2/user/token/refresh (cookie)
     API-->>R: 200 {token: new} + rotated cookie
@@ -96,8 +95,8 @@ Mounted by `ContentAuth.vue`: calls `authStore.renewToken()` once on load, sched
 1. the URL as given;
 2. `+ /api/v1` if the path does not already end with it;
 3. the same again (the code resets the pathname and repeats step 2; comments say "via https" but the scheme is not changed; Unverified whether this step can ever succeed where step 2 failed);
-4. port `3456` (`API_DEFAULT_PORT`) on the original path;
-5. port `3456` `+ /api/v1`;
+4. port `3456` (`API_DEFAULT_PORT`) on whatever pathname step 3 left (already `+ /api/v1` unless the input had it; the pathname is not reset here);
+5. port `3456` with the pathname reset and `+ /api/v1` appended again (identical to step 4 when the input lacked `/api/v1`);
 6. restore the old `window.API_URL` and rethrow.
 
 On success: if the URL changed, `configureApiClient()` and `queryClient.clear()`; then `localStorage.API_URL = window.API_URL`. Tests: `helpers/checkAndSetApiUrl.test.ts`.
@@ -149,7 +148,7 @@ TOTP in login: the server answers `1017` when a passcode is needed; `login()` se
 
 ## Error handling
 
-Login errors are rendered by the views with `getErrorText(e)` (`message/index.ts`); code `1017` is intercepted for TOTP. `refreshUserInfo` converts any 4xx into `logout()`. Refresh failures inside the interceptors log with `console.warn('[Vikunja] Token refresh ...')` and reject the original error so the UI can redirect. Link-share auth never logs the error object (it would contain the plaintext password, see comment in `LinkSharingAuth.vue`).
+Login errors are rendered by the views with `getErrorText(e)` (`message/index.ts`); code `1017` is intercepted for TOTP. `refreshUserInfo` converts any 4xx into `logout()`. Refresh failures inside the axios interceptor log with `console.warn('[Vikunja] Token refresh ...')` and reject the original error so the UI can redirect; the fetch interceptor swallows the refresh error and returns the original 401 response. Link-share auth never logs the error object (it would contain the plaintext password, see comment in `LinkSharingAuth.vue`).
 
 ## Tests
 

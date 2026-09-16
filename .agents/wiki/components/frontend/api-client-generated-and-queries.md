@@ -88,7 +88,7 @@ Every callback uses the `client` from its context argument (`(created, _vars, _c
 | `client/http.ts` | `client`, `ResolvedRequestOptions` |
 | tests: `client/queries/labels.test.ts`, `stores/tasks.test.ts`, `views/user/settings/Mcp.test.ts` | mock `@/client/generated` |
 
-24 files import from the generated client (`grep -rl` on 2026-09-16; the foundation page's "23" predates `Mcp.test.ts` or counts differently).
+23 files import `@/client/generated` (`grep -rl` on 2026-09-16); `client/inviteLink.ts` makes 24 with its dynamic `./generated` import, which is why the foundation page says 23.
 
 ## Validation errors → field map
 
@@ -146,7 +146,7 @@ Failures throw from the SDK call; `mutationFn` lets them propagate so `onError` 
 - Two refresh implementations (`client/http.ts`, `helpers/fetcher.ts`); see [auth-and-session](./auth-and-session.md#gotchas-and-tech-debt).
 - `views/admin/InviteLinksView.vue` calls SDK functions directly without a query module; treat it as the "before" state when adding one.
 - `models/task.ts` re-snake-cases labels after `assignData` so the generated `Label` type survives inside a legacy model; any camelCase pass over a task must skip `labels`.
-- The foundation page counts 23 generated-client importers; the current count is 24.
+- The foundation page counts 23 generated-client importers (`@/client/generated`); it is 24 once `client/inviteLink.ts`'s relative `./generated` import is included.
 - Type generation reflects Go struct tags: a missing `readOnly:"true"` makes a server-controlled field writable in `*Writable` types; fix it in Go, not here.
 
 ## Related pages

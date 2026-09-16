@@ -101,13 +101,13 @@ Body limits: Echo's global `BodyLimit((maxFileSize+2) MB)` (`pkg/routes/routes.g
 
 | Key (`config.yml`) | Env var | Effect |
 |---|---|---|
-| `files.basepath` (default `./files`) | `VIKUNJA_FILES_BASEPATH` | Local directory, or the key prefix inside the S3 bucket; resolved with `config.ResolvePath` for local |
+| `files.basepath` (default `files`; documented as `./files` in `config-raw.json`) | `VIKUNJA_FILES_BASEPATH` | Local directory, or the key prefix inside the S3 bucket; resolved with `config.ResolvePath` for local |
 | `files.maxsize` (default `20MB`) | `VIKUNJA_FILES_MAXSIZE` | Parsed by `config.SetMaxFileSizeMBytesFromString` → `GetMaxFileSizeInMBytes`; feeds both the Echo body limit and `CreateWithMimeAndSession`. There is **no** `service.maxfilesize` key. |
 | `files.type` (`local` \| `s3`) | `VIKUNJA_FILES_TYPE` | Anything else fails startup in `InitStorageBackend` |
 | `files.s3.endpoint`, `.bucket`, `.region`, `.accesskey`, `.secretkey` | `VIKUNJA_FILES_S3_*` | All but region are required when type is `s3` |
 | `files.s3.usepathstyle` | | Needed for MinIO and most non-AWS providers |
 | `files.s3.disablesigning` | | Swaps in the unsigned-payload middleware |
-| `files.s3.tempdir` | | Declared in `config.go` with default `""` but no reader anywhere in `pkg/` (grep on 2026-09-16); dead key |
+| `files.s3.tempdir` | | Declared in `config.go` with default `""` but no functional reader in `pkg/` (only the generated `pkg/yaegi_symbols/vikunja_config.go` mentions it; grep on 2026-09-16) and absent from `config-raw.json`; dead key |
 | `service.maxavatarsize` (default 1024) | | Clamp for requested avatar sizes |
 | `avatar.gravatarexpiration` (3600 s), `avatar.gravatarbaseurl` | | Gravatar cache TTL and Libravatar-style base URL (trailing slash trimmed at init) |
 | `backgrounds.enabled`, `backgrounds.providers.upload.enabled`, `backgrounds.providers.unsplash.enabled`, `.accesstoken`, `.applicationid` | | Route registration gates; Unsplash needs both credentials |

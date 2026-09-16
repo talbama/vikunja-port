@@ -28,7 +28,7 @@ All settings views except `Mcp.vue` and `InviteLinksView.vue` use the legacy ser
 |---|---|---|---|
 | Name, default project, email reminders, overdue reminders + time, language, timezone, week start, discoverable by name/email | `views/user/settings/General.vue` (630 lines) → `authStore.saveUserSettings` → `UserSettingsService.update` | `POST /user/settings/general` (also on v2, `pkg/routes/api/v2/user_settings.go:117`) | `models.UserGeneralSettings` (`pkg/models/user_settings.go`): `Name`, `EmailRemindersEnabled`, `OverdueTasksRemindersEnabled`, `OverdueTasksRemindersTime`, `DefaultProjectID`, `WeekStart`, `Language`, `Timezone`, `DiscoverableByName`, `DiscoverableByEmail` → `users` columns |
 | `frontendSettings.*`: `defaultView`, `minimumPriority`, `defaultDueTime`, `filterIdUsedOnOverview`, `showLastViewed`, `dateDisplay`, `timeFormat`, `timeTrackingDefaultStart` (pro), `colorSchema`, `quickAddMagicMode`, `quickAddDefaultReminders`, `defaultTaskRelationType`, `playSoundWhenDone`, `allowIconChanges`, `alwaysShowBucketTaskCount`, `backgroundBrightness` (clamped 0–100), `desktopQuickEntryShortcut` (desktop only, `ShortcutRecorder.vue`) | same form; shape in `frontend/src/modelTypes/IUserSettings.ts` → `IFrontendSettings` (`sidebarWidth`, `commentSortOrder` are written elsewhere) | same request, `frontend_settings` object | `UserGeneralSettings.FrontendSettings` → `users.frontend_settings` JSON (`pkg/user/user.go:127`, `premarshalFrontendSettings`); the server never interprets it |
-| Timezone list | `General.vue` → `useAvailableTimezones` (raw `AuthenticatedHTTPFactory`) | `GET /user/timezones` | `pkg/routes` timezone list |
+| Timezone list | `General.vue` → local `useAvailableTimezones()` helper (`General.vue:495`, raw `AuthenticatedHTTPFactory`) | `GET /user/timezones` | `pkg/routes` timezone list |
 | Avatar provider / upload / crop | `Avatar.vue` (`vue-advanced-cropper`), `AvatarService` | `GET`/`POST /user/settings/avatar`, `PUT /user/settings/avatar/upload` | `avatar_provider`: `gravatar`, `upload`, `initials`, `marble`, `ldap`, `openid`, `default` (`userAvatarProviderBody` doc in v2); `authStore.invalidateAvatar()` afterwards |
 | CalDAV tokens | `Caldav.vue`, `CaldavTokenService` | `GET`/`PUT /user/settings/token/caldav`, `DELETE .../{id}`; URL shown: `${configStore.apiBase}/dav/principals/${username}/` | caldav tokens ([caldav](../backend/caldav.md)) |
 | TOTP | `TOTP.vue`, `TotpService` | `GET /user/settings/totp`, `POST .../enroll`, `.../enable` `{passcode}`, `.../disable` `{password}`, `.../qrcode` (blob); enabling calls `authStore.logout()` | `pkg/user` TOTP |
@@ -46,7 +46,7 @@ All settings views except `Mcp.vue` and `InviteLinksView.vue` use the legacy ser
 
 `ApiTokenForm.vue`: props `routes?`, `presets?`, `initialTitle`, `initialScopes` (`group:permission,...`); default expiry `DEFAULT_EXPIRY_DAYS = 30` with a custom `Datepicker`; `other` route group sorted last; preset buttons (`fullAccess` default, MCP passes `readOnly`/`typed`/`fullAccess` from `/mcp/info`); locked scopes survive group toggles. `ApiTokens.vue` prefills from `route.query.title` / `route.query.scopes` and auto-opens the form (used by external "create a token for X" links; `tests/e2e/user/api-tokens.spec.ts`).
 
-`McpClientGuide.vue`: props `endpoint`, `token`; remembers the chosen client in `localStorage['mcp-client']`; emits ready-to-paste commands for Claude Code (`claude mcp add --transport http ...`), Codex (`codex mcp add ... --bearer-token-env-var`), Claude Desktop, Mistral Vibe and a generic entry linking `MCP_HELP`; the token is shown only once after creation (`Mcp.test.ts`).
+`McpClientGuide.vue`: props `endpoint`, `token`; remembers the chosen client in `localStorage['mcp-client']`; emits ready-to-paste commands for Claude Code (`claude mcp add --transport http ...`), Codex (`codex mcp add ... --bearer-token-env-var`), Claude Desktop, Mistral Vibe, ChatGPT (explanation only, no credentials) and a generic entry linking `MCP_HELP`; the token is shown only once after creation (`Mcp.test.ts`).
 
 ## Internal structure
 
@@ -113,7 +113,7 @@ Run unit tests with `pnpm vitest run src/views/user/settings src/components/toke
 ## Gotchas and tech debt
 
 - `General.vue` has two `watch(() => authStore.settings, ...)` handlers that both return early when `settings.value` has keys; since `settings` is initialised from the store, they never re-run, so server-side changes are not reflected while the page is open.
-- `useAvailableTimezones` and `ApiTokens.vue` (`apiDocsUrl = window.API_URL + '/docs'`) touch `AuthenticatedHTTPFactory`/`window.API_URL` directly instead of a service or the config store.
+- `General.vue`'s inline `useAvailableTimezones()` and `ApiTokens.vue` (`apiDocsUrl = window.API_URL + '/docs'`) touch `AuthenticatedHTTPFactory`/`window.API_URL` directly instead of a service or the config store.
 - `services/admin/userService.ts` mixes v1 URLs with `apiV2Url(...)` for password operations (comment in file) — a symptom of the partial v2 port; new admin endpoints should use the generated client like `InviteLinksView.vue`.
 - `AdminOverviewModel` re-parses `expiresAt`/`validatedAt` into `Date` by hand.
 - `models/userSettings.ts` still exists for the legacy `UserSettingsService`; `IUserSettings` is the effective schema and must be edited together with `General.vue` fallbacks.

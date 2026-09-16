@@ -28,7 +28,7 @@ Vikunja exposes every project (plus the Favorites pseudo project and saved filte
 | Name | Notes |
 |---|---|
 | `Todo`, `Alarm`, `Relation`, `Config` (`caldav.go`) | Intermediate structs; `Config.ProdID` is `"Vikunja Todo App"`, `X-PUBLISHED-TTL:PT4H` is emitted on every calendar. |
-| `ParseTodos` | Emits `UID` (falls back to timestamp + sha256 of the summary), `DTSTAMP`, `SUMMARY`, colour as `X-APPLE-CALENDAR-COLOR`/`X-OUTLOOK-COLOR`/`X-FUNAMBOL-COLOR`/`COLOR` (`getCaldavColor`), `DTSTART`, `DURATION` only when there is no due date, `DTEND`, `DESCRIPTION` as Markdown via `richtext.HTMLToMarkdown`, `COMPLETED`+`STATUS:COMPLETED` keyed on `Done` (not `done_at`: a reopened repeating task keeps `done_at`, commit `f10388931`), `DUE`, `CREATED`, `PRIORITY`, `RRULE`, `CATEGORIES`, `LAST-MODIFIED`, then alarms and relations. `ORGANIZER` is disabled in `GetCaldavTodosForTasks` ("until we figure out how this works"). All text goes through `escapeICalText`, which also strips CR/LF to block property injection (`caldav_test.go:578`). |
+| `ParseTodos` | Emits `UID` (falls back to timestamp + sha256 of the summary), `DTSTAMP`, `SUMMARY`, colour as `X-APPLE-CALENDAR-COLOR`/`X-OUTLOOK-COLOR`/`X-FUNAMBOL-COLOR`/`COLOR` (`getCaldavColor`), `DTSTART`, `DURATION` only when there is no due date, `DTEND`, `DESCRIPTION` as Markdown via `richtext.HTMLToMarkdown`, `COMPLETED`+`STATUS:COMPLETED` keyed on `Done` (not `done_at`: a reopened repeating task keeps `done_at`, commit `f10388931`), `DUE`, `CREATED`, `PRIORITY`, `RRULE`, `CATEGORIES`, `LAST-MODIFIED`, then alarms and relations. `ORGANIZER` is disabled in `GetCaldavTodosForTasks` ("until we figure out how this works"). All text goes through `escapeICalText` (`caldav.go:37`), which also strips CR/LF to block property injection (`TestEscapeICalText`, `caldav_test.go:611`; CRLF-in-summary case at `:379`). |
 | `getRruleFromInterval` | `RepeatAfter` seconds → `WEEKLY`/`DAILY`/`HOURLY`/`MINUTELY`/`SECONDLY` + `INTERVAL`; `TaskRepeatModeMonth` → `FREQ=MONTHLY;BYMONTHDAY=<due day>`. Other repeat modes and inbound `RRULE` are **not** parsed back (no `RRULE` case in `ParseTaskFromVTODO`). |
 | `ParseAlarms` | Reminders relative to start → `TRIGGER;RELATED=START`, relative to due **or** end → `RELATED=END`, absolute → `VALUE=DATE-TIME`. Always `ACTION:DISPLAY` with the task summary as description. |
 | `ParseRelations` | Only `parenttask` (`RELTYPE=PARENT`) and `subtask` (`RELTYPE=CHILD`) are exported; every other `RelationKind` is skipped. |
@@ -60,23 +60,16 @@ Vikunja exposes every project (plus the Favorites pseudo project and saved filte
 ```mermaid
 sequenceDiagram
     participant C as CalDAV client
-    participant R as Echo /dav group (basicAuthRateLimit + BasicAuth)
-    participant H as handler.go
+    participant H as Echo /dav group (basicAuthRateLimit + BasicAuth) → handler.go
     participant G as samedi/caldav-go
-    participant S as VikunjaCaldavProjectStorage
-    participant M as pkg/models
-    C->>R: PROPFIND/REPORT/PUT/DELETE /dav/projects/36/<uid>.ics
-    R->>H: c.Get("userBasicAuth")
-    H->>H: buffer body, ParseTaskFromVTODO if body starts with BEGIN:VCALENDAR
-    alt REPORT sync-collection / PROPPATCH / OPTIONS on read-only
-        H-->>C: handled locally
-    else
-        H->>G: HandleRequestWithConfig(request, Config{Storage: S})
-        G->>S: GetResources / GetResource / CreateResource / UpdateResource / DeleteResource
-        S->>M: Can* + Create/Update/Delete with one db session
-        S-->>G: data.Resource (content = ParseTodos)
-        G-->>C: 207 / 201 / 204 / 4xx
-    end
+    participant S as VikunjaCaldavProjectStorage → pkg/models
+    C->>H: PROPFIND/REPORT/PUT/DELETE /dav/projects/36/<uid>.ics
+    H->>H: c.Get("userBasicAuth"); buffer body, ParseTaskFromVTODO if it starts with BEGIN:VCALENDAR
+    H-->>C: REPORT sync-collection / PROPPATCH / OPTIONS on read-only: handled locally
+    H->>G: otherwise HandleRequestWithConfig(request, Config{Storage: S})
+    G->>S: GetResources / GetResource / CreateResource / UpdateResource / DeleteResource
+    S-->>G: Can* + Create/Update/Delete in one db session; data.Resource (content = ParseTodos)
+    G-->>C: 207 / 201 / 204 / 4xx
 ```
 
 Route table (`registerCalDavRoutes`, `routes.go:1068-1082`): `/dav`, `/dav/`, `/dav/principals/*`, `/dav/projects`, `/dav/projects/:project`, `/dav/projects/:project/:task`, each with and without trailing slash, all `Any`. `/.well-known/caldav` is a separate group with the same middlewares. Both groups share `basicAuthRateLimit()` (`pkg/routes/rate_limit.go`) with `/feeds` and `/api/v2/notifications.atom`, and CORS is skipped for paths starting with `/dav` or `/feeds` because CalDAV needs its own OPTIONS answers (`routes.go:285-290`).

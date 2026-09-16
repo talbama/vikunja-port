@@ -9,7 +9,7 @@ The Vue 3 single-page app in `frontend/`. Feature-level detail lives under [comp
 1. `import './client/inviteLink'` first, so an `#invite-link=` fragment is consumed before the router or telemetry can touch the URL.
 2. Resolve the API URL: `localStorage.API_URL` overrides `window.API_URL` (set by the inline script at the end of `index.html`, default `/api/v1`); a trailing slash is stripped.
 3. `configureApiClient()` (`src/client/http.ts`) configures the generated fetch client's base URL and interceptors.
-4. Register directives (`focus`, `tooltip`, `shortcut`, `cy`) and global components (`Icon`, `XButton`, `Modal`, `Card`), then `setupKeyboardModality()` and `handleChunkLoadErrors()`.
+4. Import directives (`focus`, `tooltip`, `shortcut`, `cy`) and global components (`Icon`, `XButton`, `Modal`, `Card`), then `setupKeyboardModality()` and `handleChunkLoadErrors()`; the directives and components are registered on the app inside the callback below.
 5. **Load the browser language before creating the app**: `setLanguage(getBrowserLanguage()).then(...)`.
 6. Inside the callback: optional Sentry (`window.SENTRY_ENABLED`), `Notifications`, `VueQueryPlugin` with the shared `queryClient`, global error handler routing to `error()` from `src/message`, then `pinia` → `router` → `i18n` → `mount('#app')`.
 
@@ -61,7 +61,7 @@ Convention: server state that is a plain list or entity cache should move to Tan
 
 ```mermaid
 flowchart LR
-    subgraph legacy [Legacy layer: 120 importers]
+    subgraph legacy [Legacy layer: 84 files import a service]
         SV[src/services/*Service.ts<br/>extends AbstractService]
         MO[src/models/*Model.ts<br/>extends AbstractModel]
         MT[src/modelTypes/I*.ts]
@@ -69,7 +69,7 @@ flowchart LR
         SV --> MO --> MT
         SV --> AX
     end
-    subgraph new [New layer: 24 importers incl. one test]
+    subgraph new [New layer: 22 importers incl. two tests]
         GEN[src/client/generated<br/>sdk.gen.ts + types.gen.ts]
         HTTP[src/client/http.ts<br/>fetch client config]
         Q[src/client/queries/*.ts<br/>TanStack Query options]
@@ -95,12 +95,12 @@ TanStack Query layering (from `.agents/docs/api.md`, verified in `src/client/que
 
 ## Auth and token refresh
 
-- Tokens live in memory first, then `localStorage.token` (`src/helpers/auth.ts` → `saveToken`, `getToken`, `getTokenIdentity`). The JWT payload is decoded by hand to read `id`, `type` (1 user, 2 link share), `exp`, and `sid`.
+- Tokens live in memory first, then `localStorage.token` (`src/helpers/auth.ts` → `saveToken`, `getToken`, `getTokenIdentity`). The JWT payload is decoded by hand: `getTokenIdentity` reads `id` and `type` (1 user, 2 link share); `authStore.checkAuth()` (`src/stores/auth.ts`) reads `exp` and `sid`.
 - Refresh is `POST /api/v2/user/token/refresh` with the HttpOnly cookie, falling back to the v1 path. Concurrent refreshes coalesce into one promise and take a Web Lock (`vikunja-token-refresh`) so multiple tabs do not race. An `authEpoch` counter prevents a late refresh from re-persisting a token after logout.
 - Both HTTP layers retry once on `401` with error code `11` (`ERROR_CODE_INVALID_TOKEN` in `src/helpers/fetcher.ts`, `getProblemCode(...) !== 11` in `src/client/http.ts`), only for user tokens, and only if the current token still belongs to the same identity. This logic exists twice; change both.
 - `authStore.checkAuth()` decodes the JWT, refreshes user info at most once a minute, and logs out on a 4xx from `/user`.
 
-Full flow with file references: [Data flows](10-data-flows.md#login).
+Full flow with file references: [Data flows](10-data-flows.md#1-login).
 
 ## Errors to the user
 

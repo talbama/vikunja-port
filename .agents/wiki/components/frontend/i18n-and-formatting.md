@@ -42,7 +42,7 @@ Translations (vue-i18n with lazily loaded locale files), locale side effects (`<
 | Pattern | Count | Example |
 |---|---|---|
 | `const {t} = useI18n({useScope: 'global'})` | 75 occurrences | `views/labels/ListLabels.vue` (the documented form) |
-| `useI18n()` without scope | 21 | `Notifications.vue:132`; works because messages are global, but the convention is explicit scope |
+| `useI18n()` without scope | 19 (excluding tests) | `Notifications.vue:131`; works because messages are global, but the convention is explicit scope |
 | `$t('...')` in templates | 152 files | `UpdateNotification.vue:7` |
 | `<i18n-t keypath="...">` for interpolated markup | 11 files, 17 `keypath=` | rich strings with slots |
 | `i18n.global.t(...)` in non-component TS | 12 | `src/message`, stores |
@@ -133,7 +133,7 @@ sequenceDiagram
 | `views/user/settings/General.test.ts` | settings form incl. language/date fields |
 | `mage check:translations` | key sync for both `en.json` files (146 API keys, 1725 frontend references on 2026-09-16 per [Development workflow](../../07-development-workflow.md#code-generation)) |
 
-Not covered: `i18n/index.ts` (`setLanguage`, `getBrowserLanguage`, the Russian plural rule), `useDayjsLanguageSync.ts`, `useGlobalNow.ts`, `TimeDisplay.vue`, `period.ts`, `parse*Prop.ts`. Tests that render real strings use `createI18n({legacy: false, locale: 'en', messages: {en}})` as in `views/user/settings/TOTP.test.ts:41`; most others stub `useI18n` to return the key.
+Not covered: `i18n/index.ts` (`setLanguage`, `getBrowserLanguage`, the Russian plural rule), `useDayjsLanguageSync.ts`, `useGlobalNow.ts`, `TimeDisplay.vue`, `period.ts`, `parse*Prop.ts`. Tests that render real strings use `createI18n({legacy: false, locale: 'en', messages: {en}})` as in `views/user/settings/TOTP.test.ts:42`; most others stub `useI18n` to return the key.
 
 ## Gotchas and tech debt
 

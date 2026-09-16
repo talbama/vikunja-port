@@ -63,13 +63,13 @@ sequenceDiagram
 | Behaviour | Where |
 |---|---|
 | Detection: `window.vikunjaDesktop?.isDesktop` | `frontend/src/helpers/desktopAuth.ts` → `isDesktopApp`; types in `frontend/src/types/desktop.d.ts` and `quick-entry.d.ts` |
-| Ignore `window.API_URL` from `index.html`; only a stored `localStorage.API_URL` counts, then `checkAndSetApiUrl` + `checkAuth` before ready | `frontend/src/stores/base.ts` → `hydrateConfig` (line 150) |
+| Ignore `window.API_URL` from `index.html`; only a stored `localStorage.API_URL` counts, then `checkAndSetApiUrl` + `checkAuth` before ready | `frontend/src/stores/base.ts` → `hydrateConfig` (line 148) |
 | API URL prompt: `ApiConfig.vue` opens in configure mode when `window.API_URL === ''` (what `build.js` writes); `NoAuthWrapper.vue` hides it on desktop until a URL is stored | `frontend/src/components/misc/ApiConfig.vue:83-84`, `NoAuthWrapper.vue:70-72` |
 | Login page renders `DesktopLogin.vue` instead of local/OIDC forms; auto-redirect to a provider is disabled | `frontend/src/views/user/Login.vue:19`, `helpers/redirectToProvider.ts` → `getAutoRedirectProvider` |
 | Tokens from IPC → `saveToken` + `localStorage.desktopOAuthRefreshToken` | `frontend/src/stores/auth.ts` → `handleDesktopOAuthTokens` |
 | Refresh under the auth lock goes through `refreshDesktopToken` (IPC `oauth:refresh-token`) instead of the web refresh | `frontend/src/helpers/auth.ts:120-146` |
 | Quick-add mode: `?mode=quick-add` → `QuickAddOverlay` (or a "not logged in" notice); shortcuts, PWA banners, demo banner suppressed | `frontend/src/composables/useQuickAddMode.ts`, `App.vue:3-38` |
-| Window resize/close/show-main via `window.quickEntry` | `QuickActions.vue:539-579`, `QuickAddOverlay.vue:24-29`, `Modal.vue:318` |
+| Window resize/close/show-main via `window.quickEntry` | `QuickActions.vue:552-579`, `QuickAddOverlay.vue:24-29`, `Modal.vue:318` |
 | Global shortcut setting `frontendSettings.desktopQuickEntryShortcut` (default `CmdOrCtrl+Shift+A`) synced on settings load; UI section only on desktop | `frontend/src/stores/auth.ts:178-187`, `views/user/settings/General.vue:257-268` |
 
 ## Dependencies
@@ -92,7 +92,7 @@ sequenceDiagram
 ## Error handling
 
 - Malformed deep links and unknown hosts are ignored silently (`handleDeepLink` try/catch, only `hostname === 'callback'` is handled).
-- OAuth failures reach the renderer as `oauth:error` strings; `DesktopLogin.vue:104` shows `user.auth.desktopOAuthError`.
+- OAuth failures reach the renderer as `oauth:error` strings; `DesktopLogin.vue:106` shows `user.auth.desktopOAuthError`.
 - Missing `pendingApiUrl` when a callback arrives → `'No pending login session'`.
 - Shortcut registration failure and AppImage handler failures are `console.warn` only.
 - `build.js` exits 1 on any step failure.
@@ -103,7 +103,7 @@ sequenceDiagram
 
 CI (`release.yml` → `desktop`): matrix `ubuntu-latest`, `windows-latest`, `macos-latest`; pnpm from `desktop/package.json`, Node from `frontend/.nvmrc`; Linux installs `libopenjp2-tools rpm libarchive-tools`; downloads the `frontend_dist` artifact from `test.yml` → `frontend-build` into `frontend/dist`; runs `node build.js "<git describe>" <ref_type == tag>`; uploads `desktop/dist/Vikunja*` (minus `*.blockmap`) to S3 `/desktop/<tag|unstable>` and as artifact `vikunja_desktop_packages_<os>`. `publish-repos` copies the Linux `.deb` into the apt incoming tree, renames `.rpm` → `-x86_64.rpm` and `.pacman` → `-x86_64.archlinux` so the repo targets pick them up (apk is skipped: the electron `.apk` is not an Alpine package). `create-release` attaches `Vikunja Desktop*` from all three OS artifacts to the draft release.
 
-README divergence (`desktop/README.md`): the manual steps `cp -r ../frontend/dist frontend/` + `sed 's/\/api\/v1//g'` leave the inline script in place, which the CSP blocks; `build.js` is the real path. The README also says to edit `package.json` manually and run `pnpm run dist --linux --windows`, and describes the package as containing "no code" although `main.js` is ~500 lines.
+README divergence (`desktop/README.md`): the manual steps `cp -r ../frontend/dist frontend/` + `sed 's/\/api\/v1//g'` leave the inline script in place, which the CSP blocks; `build.js` is the real path. The README also says to edit `package.json` manually and run `pnpm run dist --linux --windows`, and describes the package as containing "no code" although `main.js` is ~630 lines.
 
 ## Tests
 

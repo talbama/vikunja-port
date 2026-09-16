@@ -44,27 +44,15 @@ How a task list request becomes SQL: the `TaskCollection` DTO, the filter DSL pa
 ```mermaid
 flowchart TD
     A[ReadAll] --> B[pinToLinkShareProject: link share → its own project, GHSA-rj9j]
-    B --> C{ProjectID < -1 and not already a saved filter?}
-    C -- yes --> D[load SavedFilter, CanRead, merge sort/order, timezone from user, filter = request && saved] --> A
-    C -- no --> E{ProjectViewID set?}
-    E -- yes --> F[GetProjectViewByIDAndProject; merge view.Filter, timezone, search, include_nulls]
-    F --> G{filter mentions bucket_id?}
-    G -- yes --> H[filteringForBucket; getFilterValueForBucketFilter for filter-mode views]
+    B --> C{ProjectID < -1, not yet a saved filter?} -- yes --> D[load SavedFilter, CanRead, merge sort/order + timezone, filter = request && saved] --> A
+    C -- no --> E{ProjectViewID set?} -- yes --> F[GetProjectViewByIDAndProject; merge view.Filter, timezone, search, include_nulls; bucket_id in filter → filteringForBucket / getFilterValueForBucketFilter]
     E -- no --> I
-    G -- no --> I[getTaskFilterOptsFromCollection: parse sort + filter]
-    H --> I
-    I --> J[validate expand; append position sort when a view is given]
-    J --> K{auth is LinkSharing?}
-    K -- yes --> L[projects = share project]
-    K -- no --> M[getRelevantProjectsFromCollection]
-    L --> N[getTaskOrTasksInBuckets]
-    M --> N
-    N --> O{saved-filter view?} -- yes --> P[ensureTaskPositionsForSavedFilterView]
-    P --> Q
-    O -- no --> Q{filteringForBucket or forceFlatTasks?}
-    Q -- yes --> R[getTasksForProjects → flat tasks]
-    Q -- no --> S{view with BucketConfigurationMode != none and no bucket_id in filter?}
-    S -- yes --> T[GetTasksInBucketsForView → buckets with tasks]
+    F --> I[getTaskFilterOptsFromCollection: parse sort + filter; validate expand; append position sort for a view]
+    I --> K{LinkSharing?} -- yes --> L[projects = share project] --> N
+    K -- no --> M[getRelevantProjectsFromCollection] --> N[getTaskOrTasksInBuckets]
+    N --> O{saved-filter view?} -- yes --> P[ensureTaskPositionsForSavedFilterView] --> Q
+    O -- no --> Q{filteringForBucket or forceFlatTasks?} -- yes --> R[getTasksForProjects → flat tasks]
+    Q -- no --> S{BucketConfigurationMode != none and no bucket_id filter?} -- yes --> T[GetTasksInBucketsForView → buckets with tasks]
     S -- no --> R
 ```
 
@@ -168,7 +156,7 @@ Input (from the frontend after `transformFilterStringForApi`): `done = false && 
 - `task_collection_filter_test.go`: `TestParseFilter`, `TestReplaceFilterOperators`, `TestDateFilterTimezone`, `TestZeroDateFilterBoundary`. `filter_complexity_test.go`: caps, HTTP code, `isErrInvalidFilter`, cron skip. `task_collection_sort_test.go`: `TestSortParamValidation`.
 - `task_search_test.go` (bucket filtering, relevance ranking, title boost; ParadeDB cases only run when the extension is present), `task_search_subtask_access_test.go`, `task_search_favorites_access_test.go`, `task_search_bench_test.go`.
 - `saved_filters_test.go` (id arithmetic, CRUD, permissions) and `saved_filter_positions_test.go` (positions created by update, cron, first fetch, heal beyond the page, #724 sorting).
-- Fixtures: `pkg/db/fixtures/saved_filters.yml` (one filter, owner 1, date-based), `tasks.yml`, `label_tasks.yml`, `task_assignees.yml`, `task_reminders.yml`, `project_views.yml` (views of saved filter 1 are the negative project id -2).
+- Fixtures: `pkg/db/fixtures/saved_filters.yml` (one filter, owner 1, date-based), `tasks.yml`, `label_tasks.yml`, `task_assignees.yml`, `task_reminders.yml`, `project_views.yml` (no fixture view carries a negative `project_id`, so saved filter 1 has no views in the fixtures; tests that need them create their own filter, e.g. `saved_filter_positions_test.go`).
 - Known gaps, from the test file: `task_collection_test.go:1660` `TODO filter parent project?`, `:1825-1826` `TODO unix dates`, `TODO date magic`.
 
 ## Gotchas and tech debt

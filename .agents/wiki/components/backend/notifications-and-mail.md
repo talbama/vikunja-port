@@ -18,7 +18,7 @@
 | `NewMail()` builder, `SendMail(m, lang)`, `RenderMail`, `CreateConversationalHeader`, `EscapeMarkdown` | `pkg/notifications/mail.go`, `mail_render.go`, `markdown_escape.go` | `ToMail` implementations, `notifyMail` |
 | `DatabaseNotification`, `GetNotificationsForUser`, `GetNotificationByID`, `GetNotificationsForNameAndUser`, `CanMarkNotificationAsRead`, `MarkNotificationAsRead`, `MarkAllNotificationsAsRead`, `DeleteAllNotificationsForUser` | `pkg/notifications/database.go` | `pkg/models/notifications_database.go`, v1/v2 handlers, `pkg/websocket/listener.go`, dedupe checks in listeners |
 | `NotificationCreatedEvent` (`notification.created`) | `pkg/notifications/events.go` | dispatched from `DatabaseNotification.AfterInsert` |
-| `mail.StartMailDaemon()`, `StopMailDaemon()`, `SendMail(opts)`, `SendTestMail(opts)`, `GetMailDomain()` | `pkg/mail/mail.go`, `send_mail.go`, `domain.go` | `pkg/initialize/init.go` → `FullInitWithoutAsync`, `pkg/cmd/user.go`, `notifications.SendMail`, the settings "send test mail" route |
+| `mail.StartMailDaemon()`, `StopMailDaemon()`, `SendMail(opts)`, `SendTestMail(opts)`, `GetMailDomain()` | `pkg/mail/mail.go`, `send_mail.go`, `domain.go` | `pkg/initialize/init.go` → `FullInitWithoutAsync`, `pkg/cmd/user.go` (`StopMailDaemon`), `notifications.SendMail`, `pkg/cmd/testmail.go` (`SendTestMail`; there is no HTTP route for it) |
 | `Fake()`, `AssertSent`, `AssertNotSent` / `mail.Fake()`, `LastSent`, `SentMails`, `ResetSent` | `pkg/notifications/testing.go`, `pkg/mail/testing.go` | tests |
 
 ## Key types and functions
@@ -40,8 +40,6 @@ sequenceDiagram
     participant L as listener / cron
     participant N as notifications.Notify
     participant DB as notifications table
-    participant EV as events bus
-    participant MQ as mail.Queue
     L->>N: Notify(user, n, s)
     N->>N: user.ShouldNotify(s)
     N->>DB: insert row (ToDB != nil)
@@ -111,7 +109,7 @@ Per-user gates (`pkg/user/user.go`): `EmailRemindersEnabled` and `OverdueTasksRe
 
 - `Notify` returns DB errors (listeners turn them into retries) but mail errors from `AfterInsert` are only logged (`Failed to send mail for notification`).
 - The daemon logs `Error during connect to smtp server` / `Error when sending mail` and drops that message; there is no retry, dead-letter, or metric for failed mails. Once `mailer.queuelength` messages are buffered, `Queue <- m` blocks the caller (a listener or cron goroutine) until the daemon drains.
-- `SendTestMail` surfaces the SMTP error to the settings UI.
+- `SendTestMail` surfaces the SMTP error to the `vikunja testmail` command (`pkg/cmd/testmail.go`).
 - Rendering errors (`RenderMail`) return from `SendMail` and, for persisted notifications, are logged from `AfterInsert`.
 
 ## Tests

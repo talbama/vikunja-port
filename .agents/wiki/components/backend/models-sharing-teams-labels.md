@@ -13,7 +13,7 @@ Everything in `pkg/models` that grants or decorates access without being a proje
 |---|---|---|
 | `Team`, `TeamMember` CRUD + `Can*`, `GetTeamByID`, `CreateNewTeam` | `teams.go`, `team_members.go`, `teams_permissions.go`, `team_members_permissions.go` | v2 `teams.go`, `team_members.go`, `admin_teams.go`; v1 |
 | `SyncExternalTeamsForUser(s, u, teams, issuer, suffix)`, `GetTeamByExternalIDAndIssuer` | `team_sync.go` | `pkg/modules/auth/openid/openid.go:286`, `pkg/modules/auth/ldap/ldap.go:374` |
-| `LinkSharing` CRUD + `Can*`, `GetLinkShareFromClaims`, `GetLinkShareByHash`, `VerifyLinkSharePassword` | `link_sharing.go`, `link_sharing_permissions.go` | v2 `link_sharing.go`, `auth_public.go`, `token_meta.go`; v1 `link_sharing_auth.go`; `pkg/routes/api_tokens.go` |
+| `LinkSharing` CRUD + `Can*`, `GetLinkShareFromClaims`, `GetLinkShareByHash`, `VerifyLinkSharePassword` | `link_sharing.go`, `link_sharing_permissions.go` | v2 `link_sharing.go`, `token_meta.go`; v2 `auth_public.go` and v1 `link_sharing_auth.go` via `shared.AuthenticateLinkShare` (`pkg/routes/api/shared/auth.go`); `GetLinkShareFromClaims` from the JWT middleware (`pkg/modules/auth/auth.go:267`) |
 | `Label`, `LabelTask`, `LabelTaskBulk`, `GetLabelsForUser`, `GetLabelsByTaskIDs`, `Task.UpdateTaskLabels` | `label.go`, `label_task.go`, `label_permissions.go`, `label_task_permissions.go` | v2 `labels.go`, `label_tasks.go`, `label_task_bulk.go`; tasks, importers |
 | `Subscription` CRUD, `GetSubscriptionForUser`, `GetSubscriptionsForEntity`, `GetSubscriptionsForDeletedTask`, `subscribeUserImplicitly` | `subscription.go`, `subscription_permissions.go` | v2 `subscriptions.go`; listeners; `tasks.go:1165`, `task_assignees.go:262` |
 | `addToFavorites`, `removeFromFavorite`, `isFavorite`, `getFavorites` | `favorites.go` | project and task read/update paths |
@@ -50,18 +50,14 @@ Everything in `pkg/models` that grants or decorates access without being a proje
 
 ```mermaid
 flowchart LR
-    subgraph access["who can act"]
-        P[Project.Can* / IsAdmin]
-        T[Team.IsAdmin / CanRead]
-    end
+    P[Project.Can* / IsAdmin]
+    T[Team.IsAdmin / CanRead]
     LS[LinkSharing.Can*] -->|create/update/delete: CanWrite, Admin share needs IsAdmin; by-id read needs IsAdmin| P
-    TP[TeamProject.CanCreate] -->|project IsAdmin + team readable or public| P
-    TP --> T
+    TP[TeamProject.CanCreate] -->|project IsAdmin + team readable or public| P & T
     TM[TeamMember.Can*] --> T
     L[Label.CanRead] -->|accessibleProjectIDsCond over tasks| P
-    LT[LabelTask.Can*] -->|Task.CanUpdate| P
+    LT[LabelTask.Can*] & R[Reaction.Can*] -->|Task.CanRead / CanUpdate| P
     S[Subscription.Can*] -->|Project.CanRead or Task.CanRead| P
-    R[Reaction.Can*] -->|Task.CanRead / CanUpdate| P
     W[Webhook.Can*] -->|project hook: CanRead / CanWrite; user hook: owner| P
 ```
 
@@ -72,7 +68,7 @@ Webhook delivery: `RegisterEventForWebhook` registers one `WebhookListener` per 
 ## Dependencies
 
 - **Uses:** `pkg/user` (`GetFromAuth`, `HashPassword`, `SameBotIdentityCond`, `CreateBotUser`), `pkg/config`, `pkg/events`, `pkg/license`, `pkg/utils` (`CryptoRandomString`, `Sha256Hex`, `NewSSRFSafeHTTPClient`), `pkg/keyvalue` (none here; TOTP/email cooldowns are in `pkg/user`), `golang.org/x/crypto/bcrypt`.
-- **Used by:** OpenID/LDAP auth modules (team sync), API-token middleware (link share claims), tasks (labels, subscriptions, favorites), listeners (webhooks, team cleanup), MCP and importers (labels).
+- **Used by:** OpenID/LDAP auth modules (team sync), JWT auth middleware in `pkg/modules/auth` (link share claims), tasks (labels, subscriptions, favorites), listeners (webhooks, team cleanup), MCP and importers (labels).
 
 ## Invariants and assumptions
 
@@ -111,14 +107,14 @@ Webhook delivery: `RegisterEventForWebhook` registers one `WebhookListener` per 
 
 ## Tests
 
-- `teams_test.go`, `teams_permissions_test.go`, `team_members_test.go` (incl. `TestCleanupTaskMembersAfterTeamRemoval`), `project_team_foreign_test.go` (foreign/public team scrubbing); no dedicated `team_sync_test.go` (sync is exercised from the openid/ldap module tests; Unverified: depth of that coverage).
+- `teams_test.go`, `teams_permissions_test.go`, `team_members_test.go` (incl. `TestCleanupTaskMembersAfterTeamRemoval`), `project_team_foreign_test.go` (foreign/public team scrubbing); no dedicated `team_sync_test.go` (sync is exercised only through `pkg/modules/auth/openid/openid_test.go`; no ldap test references `SyncExternalTeamsForUser`).
 - `link_sharing_test.go` (`TestGetLinkShareFromClaims`, `TestLinkSharing_CanReadAdminOnly`, collision tests); webtests `link_share_consistency_test.go`, `link_share_avatar_test.go`, `huma_user_search_link_share_test.go`.
 - `label_test.go`, `label_task_test.go` (`TestLabelTaskBulk_CreateLinkShare`, timestamp bumps); webtests `huma_label_test.go`, `huma_label_task_test.go`, `huma_label_task_bulk_test.go`, `label_task_test.go`.
 - `subscription_test.go` (`TestSubscription_Mute`, `TestGetSubscriptionsForEntitySkipsUsersWithoutReadAccess`, `TestSubscription_NoCrossUserProjectInheritance`); webtests `huma_subscription_test.go`, `huma_task_patch_subscription_test.go`.
 - `reaction_test.go`, `webhooks_test.go` (`TestWebhookErrorResponseBodyIsTruncated`), `user_invite_link_test.go` (incl. `TestInviteLinkConcurrentClaim`, `TestInviteLinkRollback`), `bot_users_test.go`, `task_search_favorites_access_test.go`; webtests `huma_reaction_test.go`, `huma_webhook_test.go`, `huma_user_webhook_test.go`, `huma_webhook_event_test.go`, `webhook_test.go`, `huma_invite_links_test.go`, `huma_bot_user_test.go`.
 - Run with `mage test:filter <TestName>`; webtests with `mage test:web`.
 - Fixtures (`pkg/db/fixtures/`):
-  - `teams.yml`: 1 (user 1 admin, user 2), 2/3/4 (read/write/admin on projects 6/7/8), 8/9/10 and 11/12/13 (ladders on project 19 and 29), 13 and 15 public, 14/15 external (`issuer https://some.issuer`), 16 hierarchy test. `team_members.yml` puts user 1 in teams 1–8.
+  - `teams.yml`: 1 (user 1 admin, user 2), 2/3/4 (read/write/admin on projects 6/7/8), 8/9/10 and 11/12/13 (ladders on project 19 and 29), 13 and 15 public, 14/15 external (`issuer https://some.issuer`), 16 hierarchy test. `team_members.yml` puts user 1 in teams 1–8 (user 2 is also in team 1; teams 5–7 have member rows but no `teams.yml` row).
   - `link_shares.yml`: 1 read / 2 write / 3 admin on projects 1/2/3 (hashes `test`, `test2`, `test3`), 4 password-protected (`testWithPassword`, password `12345678`), 21 id collision with user 21.
   - `labels.yml` 1–13 and `label_tasks.yml`: each row's comment names the visibility branch it covers (GHSA-hj5c-mhh2-g7jq regression, bot-owner branch, soft-deleted task 51, child-project inheritance via project 16).
   - `subscriptions.yml`, `favorites.yml` (kind 1 task, 2 project), `reactions.yml` (one 👋 on task 1 by user 1), `webhooks.yml` 1–5 project-level (project 9/10/11 permission matrix, 2 forbidden) and 6–8 user-level; the file comment explains why the event choice matters for the e2e suite.
@@ -129,9 +125,9 @@ Webhook delivery: `RegisterEventForWebhook` registers one `WebhookListener` per 
 - `Team.ReadAll` includes public teams in the page when `include_public` is set, but the total count query only counts membership teams (`teams.go`, `numberOfTotalItems`).
 - `LinkSharing.ReadAll` searches `name` with ILIKE but counts with `hash LIKE '%search%'`, so `totalItems` is wrong for non-empty searches.
 - `TeamMember.Update` toggles admin rather than setting it; two concurrent "make admin" calls cancel out.
-- `Label.Delete` leaves `label_tasks` rows behind. Reads join from `labels`, so orphans are invisible; Unverified: whether anything cleans them up.
+- `Label.Delete` leaves `label_tasks` rows behind. Reads join from `labels`, so orphans are invisible; nothing deletes them by `label_id` (only `hardDeleteTask` in `tasks.go` removes `label_tasks` rows, by `task_id`).
 - `Subscription.Can*` return `ErrGenericForbidden` as the error for link shares instead of `(false, nil)`; the v2 error bridge maps it to 403 either way.
-- `subscription.go` and `team_sync.go` use hand-written SQL / `RIGHT JOIN`; the subscription CTE is the largest raw query in the package and depends on `parent_project_id` rather than `project_ancestors`.
+- `subscription.go` uses hand-written SQL (`s.SQL`) and `team_sync.go` an xorm `Join("RIGHT", ...)`; the subscription CTE is the largest raw query in the package and depends on `parent_project_id` rather than `project_ancestors`.
 - Real TODOs: `subscription_test.go:194` "Add tests to test triggering of notifications for subscribed things"; `subscription_test.go:317` commented assertion on `sub.ID`.
 - Security history in comments: GHSA-96q5-xm3p-7m84 (link share claims), GHSA-qfwc-vx6f-3g6g (link share by-id read), GHSA-hj5c-mhh2-g7jq (label leak via chained `Where`), GHSA-vvcv-vpph-h844 (reaction id collision).
 
