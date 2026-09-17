@@ -1,0 +1,82 @@
+name: agent-wiki
+
+# Trigger: a pull request merged into the default branch. The agent proposes wiki edits under .agents/wiki/ as a
+# docs PR; a human merges it. PRs opened by the wiki agent itself (agent/wiki-*) never retrigger it.
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: merged PR number
+        required: true
+      dry_run:
+        description: print GitHub writes instead of performing them
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: agent-wiki-${{ github.event.pull_request.number || inputs.pr }}
+  cancel-in-progress: false
+
+jobs:
+  wiki:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == github.event.repository.default_branch &&
+       !startsWith(github.event.pull_request.head.ref, 'agent/wiki-'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PR: ${{ github.event.pull_request.number || inputs.pr }}
+    steps:
+      - name: Check out the application (default branch, after the merge)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          path: app
+
+      - name: Check out the agent (private, read-only deploy key)
+        uses: actions/checkout@v4
+        with:
+          repository: talbama/agent-pipeline-port
+          ssh-key: ${{ secrets.AGENT_DEPLOY_KEY }}
+          path: agent
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: agent/uv.lock
+
+      - name: Install
+        run: |
+          cd agent && uv sync --frozen
+          cd ../app && git config user.name "agent-pipeline" && git config user.email "agent-pipeline@users.noreply.github.com"
+
+      - name: Refresh the wiki
+        working-directory: agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          AGENT_REPO_ROOT: ${{ github.workspace }}/app
+          AGENT_EVENTS_PATH: ${{ github.workspace }}/agent/metrics/events.jsonl
+        run: |
+          uv run python -m agent wiki --pr "$PR" ${{ inputs.dry_run == true && '--dry-run' || '' }}
+
+      - name: Upload run artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-wiki-pr-${{ env.PR }}
+          path: |
+            agent/metrics/events.jsonl
+            agent/runs/
+          if-no-files-found: ignore
