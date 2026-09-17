@@ -85,6 +85,25 @@ jobs:
         run: |
           uv run python -m agent run --issue "$ISSUE" ${{ inputs.dry_run == true && '--dry-run' || '' }}
 
+      - name: Append this run's events to the metrics branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_KIND: triage
+        run: |
+          set -e
+          EV="$GITHUB_WORKSPACE/agent/metrics/events.jsonl"
+          [ -s "$EV" ] || { echo "no events to append"; exit 0; }
+          URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git clone -q --depth 1 --branch metrics "$URL" mb 2>/dev/null; then cd mb; else
+            git init -q mb && cd mb && git remote add origin "$URL" && git checkout -q --orphan metrics
+            printf '# Agent metrics\n\nEvent logs (`events/*.jsonl`), collector cursor, and the generated `REPORT.md`. Written by GitHub Actions only.\n' > README.md
+          fi
+          git config user.name agent-pipeline && git config user.email agent-pipeline@users.noreply.github.com
+          mkdir -p events && cp "$EV" "events/${RUN_KIND}-${GITHUB_RUN_ID}.jsonl"
+          git add -A && git commit -qm "events: ${RUN_KIND} run ${GITHUB_RUN_ID}"
+          for i in 1 2 3 4 5; do git push -q origin metrics && break; git pull -q --rebase origin metrics || true; sleep $((i*3)); done
+
       - name: Upload run artefacts (events, state)
         if: always()
         uses: actions/upload-artifact@v4

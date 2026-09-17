@@ -1,0 +1,112 @@
+name: metrics-report
+
+# Regenerates the measurement report from the one event log: local runs (committed in the agent repo), CI runs
+# (metrics branch, one file per run) and what humans did on GitHub afterwards (the collector). Publishes REPORT.md
+# and report.json to the metrics branch, refreshes the pinned "Agent metrics" issue, and fails if a suspend_* rule fires.
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_run:
+    workflows: [agent-triage, agent-wiki]
+    types: [completed]
+  pull_request:
+    types: [closed]
+  issues:
+    types: [reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: metrics-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the agent (private, read-only deploy key)
+        uses: actions/checkout@v4
+        with:
+          repository: talbama/agent-pipeline-port
+          ssh-key: ${{ secrets.AGENT_DEPLOY_KEY }}
+          path: agent
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: agent/uv.lock
+      - name: Install
+        run: cd agent && uv sync --frozen
+
+      - name: Check out (or create) the metrics branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git clone -q --depth 1 --branch metrics "$URL" mb 2>/dev/null; then :; else
+            git init -q mb && cd mb && git remote add origin "$URL" && git checkout -q --orphan metrics
+            printf '# Agent metrics\n' > README.md && cd ..
+          fi
+          mkdir -p mb/events
+
+      - name: Collect what humans did on GitHub, then build the report
+        id: report
+        working-directory: agent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          MB="$GITHUB_WORKSPACE/mb"
+          uv run python -m metrics.merge --out "$MB/merged.jsonl" metrics/events.jsonl "$MB/events/*.jsonl"
+          uv run python -m metrics.collect_github --repo "$GH_REPO" --events "$MB/merged.jsonl" --cursor "$MB/collector_cursor.json" --out "$MB/events/collector.jsonl"
+          uv run python -m metrics.merge --out "$MB/merged.jsonl" metrics/events.jsonl "$MB/events/*.jsonl"
+          uv run python -m metrics.report --events "$MB/merged.jsonl" --baseline metrics/baseline.json --format md   > "$MB/REPORT.md"
+          uv run python -m metrics.report --events "$MB/merged.jsonl" --baseline metrics/baseline.json --format json > "$MB/report.json"
+          set +e
+          uv run python -m metrics.report --events "$MB/merged.jsonl" --baseline metrics/baseline.json --check > "$MB/check.txt"; CHECK=$?
+          set -e
+          echo "check=$CHECK" >> "$GITHUB_OUTPUT"
+          { printf '\n## Policy check (`metrics/policy.yaml`)\n\n```\n'; cat "$MB/check.txt"; printf '```\n\n_Generated %s by run %s._\n' "$(date -u +%FT%TZ)" "$GITHUB_RUN_ID"; } >> "$MB/REPORT.md"
+          cat "$MB/REPORT.md" >> "$GITHUB_STEP_SUMMARY"
+          rm -f "$MB/merged.jsonl"
+
+      - name: Publish to the metrics branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          cd mb && git config user.name agent-pipeline && git config user.email agent-pipeline@users.noreply.github.com
+          git add -A && (git commit -qm "report: run ${GITHUB_RUN_ID}" || echo "nothing to commit")
+          for i in 1 2 3 4 5; do git push -q origin metrics && break; git pull -q --rebase origin metrics || true; sleep $((i*3)); done
+
+      - name: Refresh the pinned "Agent metrics" issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          BODY="$GITHUB_WORKSPACE/mb/REPORT.md"
+          { printf 'Regenerated automatically by the `metrics-report` workflow. Full history and JSON: [`metrics` branch](https://github.com/%s/tree/metrics).\n\n' "$GH_REPO"; head -c 60000 "$BODY"; } > issue.md
+          N=$(gh issue list --state open --search 'in:title "Agent metrics"' --json number,title -q '.[] | select(.title=="Agent metrics") | .number' | head -1)
+          if [ -z "$N" ]; then
+            gh label create metrics --color 1d76db --force >/dev/null 2>&1 || true
+            N=$(gh issue create --title "Agent metrics" --label metrics --body-file issue.md | grep -oE '[0-9]+$')
+            gh issue pin "$N" || true
+          else
+            gh issue edit "$N" --body-file issue.md >/dev/null
+          fi
+          echo "Agent metrics issue: #$N"
+
+      - name: Fail if a suspend_* rule fired
+        if: steps.report.outputs.check != '0'
+        run: |
+          echo "::error::A suspend_* rule fired; see the report. Auto-merge should be suspended until a human resets it."
+          exit 1
