@@ -58,8 +58,9 @@ If the migration touches user-supplied paths, filenames, or import blobs (restor
 
 ## Model and frontend sync
 
-- If the migration adds or changes a field, update the struct in `pkg/models/` with matching xorm tags.
-- Update the TypeScript interface in `frontend/src/modelTypes/` to match the Go struct shape. Frontend services must match backend model structure exactly.
+- If the migration adds or changes a field, update the struct in `pkg/models/` with matching xorm tags, plus `doc:`/`readOnly:` tags for the v2 spec.
+- Update `pkg/db/fixtures/<table>.yml` where tests need values for the new column (go-testfixtures leaves omitted columns at their DB default).
+- If the field is exposed over the API, run `mage generate:frontend-client` and commit `frontend/src/client/generated/`. Only if legacy frontend code reads the field, also update the matching `frontend/src/modelTypes/I*.ts` interface and model class (camelCase). Do not add new legacy types for new fields; see `.agents/docs/api.md`.
 
 ## Testing
 

@@ -177,7 +177,7 @@ Mirror the v1 webtest shape so v2 parity is readable side-by-side. Use the `webH
 - v2-only behaviour (ETag/304, PATCH merge-patch) goes in separate top-level `Test<Resource>_*` funcs using the `humaRequest`/`humaTokenFor` helpers in `pkg/webtests/huma_helpers_test.go`.
 - The RFC 9457 error-body shape is asserted **once** globally in `TestHuma_ErrorShapeIsRFC9457` — don't re-assert the full problem+json shape per resource, just the status code.
 
-Run with `mage test:filter Test<Resource>` while iterating. **Caveat:** `mage test:filter` injects `-short`, which makes `pkg/webtests` skip entirely (the suite short-circuits in short mode), so it silently reports success without running your webtest. To actually exercise a single webtest, run it directly: `go test -run '<Name>' ./pkg/webtests/`. Save output to a file per the project test-output rule.
+Run with `mage test:filter Test<Resource>` while iterating. It runs every package except `pkg/webtests` with `-short`, then reruns `pkg/webtests` **without** `-short`, so a filter naming a webtest really executes it (`magefile.go` → `Test.Filter`). Save output to a file per the project test-output rule.
 
 ## Related
 

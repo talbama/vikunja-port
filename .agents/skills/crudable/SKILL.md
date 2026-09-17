@@ -21,7 +21,7 @@ Models in `pkg/models/` that expose CRUD operations must implement the `CRUDable
 3. If a handler or service needs to check access, call the `Can*` method. Do **not** re-implement the check inline or duplicate the logic in `pkg/routes/`.
 4. Do not implement empty stub methods just to satisfy the interface, instead embed the interface in the struct. Check existing models to see how that's done.
 
-Look at `pkg/models/project.go` or `pkg/models/task.go` for reference implementations.
+Look at `pkg/models/project.go` or `pkg/models/tasks.go` for reference implementations.
 
 The initial querying of the data should happen in the Can* function. Because we're operating on a pointer, the function that does the work should not need to re-query the model data.
 
@@ -45,5 +45,6 @@ Every `Can*` method needs both positive and negative coverage. Run with `mage te
 ## Related
 
 - Generic CRUD handler: `pkg/web/handler/`
-- Permission type definitions: `pkg/web/auth.go`, `pkg/models/permissions.go`
-- After the model is stable, register the routes in `pkg/routes/api/v1/` and add Swagger annotations. Do not edit `pkg/swagger/` directly — it's generated.
+- Permission type definitions: `pkg/web/web.go` (`Permissions`, `Auth` interfaces), `pkg/models/permissions.go`
+- After the model is stable, register routes on `/api/v2` with the `api-v2-routes` skill. `/api/v1` is frozen; only touch it to fix a bug, keeping its Swagger annotations accurate. Do not edit `pkg/swagger/` directly — it's generated.
+- Wiki: `.agents/wiki/components/backend/crud-framework.md` explains the `Do*` pipeline and session semantics.

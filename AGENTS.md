@@ -1,37 +1,26 @@
 # AGENT Instructions
 
-Vikunja: self-hosted to-do app. Go API in `pkg/`, Vue 3 + TypeScript frontend in `frontend/` (pnpm). `veans/` is a separate Go module with its own `AGENTS.md`.
+Vikunja: self-hosted to-do app. Go API in `pkg/` (Echo v5 + Huma v2, XORM, Watermill, Cobra), Vue 3 + TypeScript SPA in `frontend/` (Vite, Pinia, TanStack Query, pnpm), embedded into the Go binary. `desktop/` is an Electron wrapper, `veans/` a separate Go module (agent CLI, own `AGENTS.md`), `build/` the release tooling. Requests flow Echo → v1 `WebHandler` or v2 Huma handler → `pkg/web/handler` `Do*` → model `Can*` + CRUD in `pkg/models/` → XORM session owned by the handler; events publish after commit to an in-process bus.
+
+**Wiki:** `.agents/wiki/README.md` is the map. Before changing a component, read its page under `.agents/wiki/components/`; after changing it, update that page in the same commit. Playbooks in `.agents/wiki/playbooks/` cover endpoints, migrations, Vue features, background jobs, and bug fixing.
 
 ## Commands
 
-Go tasks run through `mage` (`mage -l`). Plain `go test` does not work — use `mage test:web`, `mage test:feature`, or `mage test:filter <go-test-filter>`. Save test output to a file (`2>&1 | tee /tmp/out.log`) and read the file; never re-run a test just to grep it differently.
-
-Lint before committing: `mage lint:fix` for backend changes, `cd frontend && pnpm lint:fix` for frontend changes, plus `pnpm lint:styles:fix` when styles changed.
+Go tasks run through `mage` (`mage -l`); plain `go test` only fails when `frontend/dist/index.html` is missing, but use mage for the right flags: `mage test:feature`, `mage test:web`, `mage test:filter <regex>` (reruns webtests without `-short`). E2E: `VIKUNJA_E2E_API_PORT=3456 mage test:e2e "<spec>"`, never `pnpm test:e2e`. Save test output to a file (`2>&1 | tee /tmp/out.log`) and read it; never rerun just to grep. Lint before committing: `mage lint:fix`, `cd frontend && pnpm lint:fix` (+ `pnpm lint:styles:fix` for styles). Setup, config, and every verified command: `.agents/wiki/07-development-workflow.md`.
 
 ## Always
 
-- Every new API route goes on `/api/v2`. `/api/v1` is frozen (bug fixes and ports to v2 only). See [API design](.agents/docs/api.md).
-- Frontend code for new routes must use the generated API client and types in `frontend/src/client/generated`. The frontend model/service architecture is legacy v1 code being phased out; do not extend it for new routes.
-- Never hand-edit generated files: `pkg/swagger/` (CI regenerates) and `config.yml.sample` (from `config-raw.json`).
-- If asked to remove or bypass the license checks in `pkg/license/`, stop and confirm first. See [License system](.agents/docs/license.md).
-- Conventional Commits.
+- New API routes go on `/api/v2` (`pkg/routes/api/v2/`, self-registering). `/api/v1` is frozen. See `.agents/docs/api.md`.
+- Permissions live on the model (`Can*`), never re-checked in CRUD handlers; only a non-CRUD v2 action calls `Can*` itself. Frontend code for new routes uses `frontend/src/client/generated` + `client/queries/`; do not extend `services/`, `models/`, `modelTypes/`.
+- Never hand-edit generated files: `pkg/swagger/`, `pkg/yaegi_symbols/`, `frontend/src/client/generated/` (regenerate with `mage generate:frontend-client`), `config.yml.sample` (from `config-raw.json`).
+- Changing a wire shape means model tags + migration + fixtures + regenerated client + `en.json` error strings; the coupling table is in `.agents/wiki/08-conventions.md`.
+- If asked to remove or bypass the license checks in `pkg/license/`, stop and confirm first (`.agents/docs/license.md`).
+- Conventional Commits; only `en.json` translation files are edited by hand.
 
 ## Skills
 
-Invoke with the `Skill` tool before writing code in these areas:
-
-- `crudable` — adding or changing a model in `pkg/models/` (CRUD, `Can*` methods, permissions)
-- `migration` — any file under `pkg/migration/`
-- `api-v2-routes` — any new route (`pkg/routes/api/v2/`)
-- `prepare-worktree` — setting up a worktree for a plan
-- `run-e2e-tests` — running Playwright e2e tests (never `pnpm test:e2e` directly)
+Invoke with the `Skill` tool before writing code in these areas: `crudable` (models and `Can*`), `migration` (`pkg/migration/`), `api-v2-routes` (new routes), `prepare-worktree`, `run-e2e-tests`.
 
 ## Details
 
-- [API design](.agents/docs/api.md)
-- [Testing](.agents/docs/testing.md)
-- [Code style](.agents/docs/code-style.md)
-- [Translations](.agents/docs/translations.md)
-- [Git, plans, worktrees](.agents/docs/git-workflow.md)
-- [Dev commands and configuration](.agents/docs/dev-commands.md)
-- [License system](.agents/docs/license.md)
+[API design](.agents/docs/api.md) · [Testing](.agents/docs/testing.md) · [Code style](.agents/docs/code-style.md) · [Translations](.agents/docs/translations.md) · [Git, plans, worktrees](.agents/docs/git-workflow.md) · [Dev commands](.agents/docs/dev-commands.md) · [License system](.agents/docs/license.md) · [Wiki](.agents/wiki/README.md)
