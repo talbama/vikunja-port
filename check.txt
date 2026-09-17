@@ -1,4 +1,4 @@
 quiet  suspend_auto_merge_on_revert: override_rate_loose > 0 (value=null, n=0, min_n=1)
-quiet  loosen_gate_on_override: override_rate_tight > 0.5 (value=null, n=0, min_n=20)
+quiet  loosen_gate_on_override: override_rate_tight > 0.5 (value=0.00, n=1, min_n=20)
 quiet  shorten_triage_on_downvotes: reaction_score < -0.2 (value=null, n=0, min_n=10)
-quiet  budget_ceiling_wrong: budget_kill_rate > 0.2 (value=0.00, n=1, min_n=10)
+quiet  budget_ceiling_wrong: budget_kill_rate > 0.2 (value=0.00, n=2, min_n=10)
