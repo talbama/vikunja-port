@@ -1,0 +1,231 @@
+{
+  "events": [
+    "/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl"
+  ],
+  "n_events": 0,
+  "runs": 0,
+  "layers": {
+    "outcome": {
+      "time_to_triage": {
+        "value": null,
+        "n": 0,
+        "unit": "seconds",
+        "assumptions": [
+          "run.start \u2192 first triage comment"
+        ]
+      },
+      "time_to_pr": {
+        "value": null,
+        "n": 0,
+        "unit": "seconds",
+        "assumptions": [
+          "run.start \u2192 github.pr_opened"
+        ]
+      },
+      "time_to_merge": {
+        "value": null,
+        "n": 0,
+        "unit": "seconds",
+        "assumptions": [
+          "run.start \u2192 github.pr_merged"
+        ]
+      },
+      "agent_vs_human_time": {
+        "value": null,
+        "n": 0,
+        "unit": "seconds",
+        "assumptions": [
+          "agent-active = \u03a3 phase.end.duration_s; waiting = time_to_merge \u2212 active"
+        ]
+      },
+      "autonomous_resolution_rate": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "over all runs; merged as-is = github.pr_merged.diff_changed_since_agent == false"
+        ]
+      }
+    },
+    "quality": {
+      "reproduction_rate": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "repro.result.failed_on_main == true, over runs"
+        ]
+      },
+      "fix_rate": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "passes_after_fix == true, over reproduced runs"
+        ]
+      },
+      "merged_as_is_rate": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "merged as-is = github.pr_merged.diff_changed_since_agent == false, over merged PRs"
+        ]
+      },
+      "reopen_or_revert_rate": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "issue reopened or PR reverted within 14 days of merge, over merged PRs"
+        ]
+      }
+    },
+    "calibration": {
+      "severity_agreement": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "over runs with a human severity override; null when n = 0, never 100%"
+        ]
+      },
+      "routing_accuracy": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "routing.assigned.owner == github.assignee_final.assignee"
+        ]
+      },
+      "override_rate_tight": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "escalated PRs merged as-is, over escalated PRs (high value = gate too tight)"
+        ]
+      },
+      "override_rate_loose": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "auto_merge PRs later reverted, over auto-merged PRs (any value > 0 = gate too loose)"
+        ]
+      }
+    },
+    "cost": {
+      "cost_per_run": {
+        "value": null,
+        "n": 0,
+        "unit": "usd",
+        "assumptions": [
+          "mean of \u03a3 phase.end.cost_usd per run"
+        ],
+        "extra": {
+          "by_phase": {},
+          "by_model": {},
+          "per_run": {}
+        }
+      },
+      "cost_per_resolved_bug": {
+        "value": null,
+        "n": 0,
+        "unit": "usd",
+        "assumptions": [
+          "total cost of all runs (including failures) / merged PRs"
+        ]
+      },
+      "budget_kill_rate": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "runs with budget.kill, over runs"
+        ]
+      }
+    },
+    "learning": {
+      "memory_effect": {
+        "value": null,
+        "n": 0,
+        "unit": "table",
+        "assumptions": [
+          "per-run triage cost alongside cases_retrieved and repo_map_version; deltas are vs the first run",
+          "a negative token delta is consistent with, not proof of, memory helping",
+          "n < 5: table only, no summary statistic"
+        ],
+        "extra": {
+          "rows": []
+        }
+      }
+    },
+    "trust": {
+      "comments_per_issue": {
+        "value": null,
+        "n": 0,
+        "unit": "comments",
+        "assumptions": [
+          "distinct agent comment ids per issue; in-place edits do not count"
+        ]
+      },
+      "reaction_score": {
+        "value": null,
+        "n": 0,
+        "unit": "score",
+        "assumptions": [
+          "(+1 \u2212 \u22121) / all reactions on agent triage comments"
+        ]
+      },
+      "zero_engagement_rate": {
+        "value": null,
+        "n": 0,
+        "unit": "ratio",
+        "assumptions": [
+          "agent comments with no reactions, over agent comments (replies are not collected in v1)"
+        ]
+      }
+    },
+    "estimate": {
+      "hours_returned": {
+        "value": null,
+        "n": 0,
+        "unit": "hours",
+        "assumptions": [
+          "ESTIMATE: shape of the calculation, not a measurement",
+          "human_fix_time = baseline MTTR \u00d7 (1 \u2212 0.7) (assumes 0.7 of MTTR is waiting, not working)",
+          "human review time on an agent PR = github.review.submitted_at \u2212 started_at when both exist, else 20 minutes",
+          "baseline is historical and from this repo only",
+          "no merged agent PRs yet, or baseline incomplete"
+        ]
+      }
+    }
+  },
+  "baseline": {
+    "repo": "go-vikunja/vikunja",
+    "label": "bug",
+    "n_requested": 100,
+    "n_used": 65,
+    "n_skipped": 35,
+    "skipped_reasons": {
+      "no_linked_fix": 35
+    },
+    "linked_by": {
+      "referenced_commit": 55,
+      "merged_pr": 10
+    },
+    "time_to_triage_s": {
+      "median": 72051.0,
+      "p75": 240289.5
+    },
+    "n_triage": 10,
+    "mttr_s": {
+      "median": 1049337.0,
+      "p75": 5755814.0
+    },
+    "reopen_rate_14d": 0.0,
+    "computed_at": "2026-09-17T12:35:37Z",
+    "note": "historical, from this repo's own GitHub history; MTTR = issue opened \u2192 fix landed (earliest merged linked PR, else the closing commit reference); the only agent-vs-human comparison in the system"
+  }
+}
