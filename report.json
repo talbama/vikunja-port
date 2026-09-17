@@ -2,16 +2,13 @@
   "events": [
     "/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl"
   ],
-  "n_events": 73,
-  "runs": 2,
+  "n_events": 0,
+  "runs": 0,
   "layers": {
     "outcome": {
       "time_to_triage": {
-        "value": {
-          "median": 47.182000160217285,
-          "p75": 47.182000160217285
-        },
-        "n": 1,
+        "value": null,
+        "n": 0,
         "unit": "seconds",
         "assumptions": [
           "run.start \u2192 first triage comment"
@@ -42,8 +39,8 @@
         ]
       },
       "autonomous_resolution_rate": {
-        "value": 0.0,
-        "n": 2,
+        "value": null,
+        "n": 0,
         "unit": "ratio",
         "assumptions": [
           "over all runs; merged as-is = github.pr_merged.diff_changed_since_agent == false"
@@ -52,16 +49,16 @@
     },
     "quality": {
       "reproduction_rate": {
-        "value": 0.5,
-        "n": 2,
+        "value": null,
+        "n": 0,
         "unit": "ratio",
         "assumptions": [
           "repro.result.failed_on_main == true, over runs"
         ]
       },
       "fix_rate": {
-        "value": 1.0,
-        "n": 1,
+        "value": null,
+        "n": 0,
         "unit": "ratio",
         "assumptions": [
           "passes_after_fix == true, over reproduced runs"
@@ -102,8 +99,8 @@
         ]
       },
       "override_rate_tight": {
-        "value": 0.0,
-        "n": 1,
+        "value": null,
+        "n": 0,
         "unit": "ratio",
         "assumptions": [
           "escalated PRs merged as-is, over escalated PRs (high value = gate too tight)"
@@ -120,29 +117,16 @@
     },
     "cost": {
       "cost_per_run": {
-        "value": 0.2447885,
-        "n": 2,
+        "value": null,
+        "n": 0,
         "unit": "usd",
         "assumptions": [
           "mean of \u03a3 phase.end.cost_usd per run"
         ],
         "extra": {
-          "by_phase": {
-            "triage": 0.108292,
-            "reproduce": 0.149715,
-            "root_cause": 0.043399,
-            "fix": 0.096326,
-            "pr": 0.031296,
-            "wiki": 0.060549
-          },
-          "by_model": {
-            "claude-haiku-4-5-20251001": 0.139588,
-            "claude-sonnet-5": 0.349989
-          },
-          "per_run": {
-            "r-4-0c8434": 0.42902799999999996,
-            "rw-8-4fba64": 0.060549
-          }
+          "by_phase": {},
+          "by_model": {},
+          "per_run": {}
         }
       },
       "cost_per_resolved_bug": {
@@ -154,8 +138,8 @@
         ]
       },
       "budget_kill_rate": {
-        "value": 0.0,
-        "n": 2,
+        "value": null,
+        "n": 0,
         "unit": "ratio",
         "assumptions": [
           "runs with budget.kill, over runs"
@@ -165,7 +149,7 @@
     "learning": {
       "memory_effect": {
         "value": null,
-        "n": 1,
+        "n": 0,
         "unit": "table",
         "assumptions": [
           "per-run triage cost alongside cases_retrieved and repo_map_version; deltas are vs the first run",
@@ -173,27 +157,14 @@
           "n < 5: table only, no summary statistic"
         ],
         "extra": {
-          "rows": [
-            {
-              "run_id": "r-4-0c8434",
-              "ts": "2026-09-17T14:10:42.481Z",
-              "cases_retrieved": 0,
-              "repo_map_version": "f47171bd",
-              "triage_tool_calls": 16,
-              "triage_input_tokens": 98,
-              "triage_duration_s": 45.1,
-              "delta_tool_calls": 0,
-              "delta_input_tokens": 0,
-              "delta_duration_s": 0.0
-            }
-          ]
+          "rows": []
         }
       }
     },
     "trust": {
       "comments_per_issue": {
-        "value": 0.5,
-        "n": 2,
+        "value": null,
+        "n": 0,
         "unit": "comments",
         "assumptions": [
           "distinct agent comment ids per issue; in-place edits do not count"
@@ -208,12 +179,23 @@
         ]
       },
       "zero_engagement_rate": {
-        "value": 1.0,
-        "n": 1,
+        "value": null,
+        "n": 0,
         "unit": "ratio",
         "assumptions": [
           "agent comments with no reactions, over agent comments (replies are not collected in v1)"
         ]
+      },
+      "wiki_runs": {
+        "value": null,
+        "n": 0,
+        "unit": "runs",
+        "assumptions": [
+          "wiki agent runs by exit; not part of any bug-pipeline rate"
+        ],
+        "extra": {
+          "cost_usd": 0.0
+        }
       }
     },
     "estimate": {
