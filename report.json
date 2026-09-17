@@ -2,8 +2,8 @@
   "events": [
     "/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl"
   ],
-  "n_events": 0,
-  "runs": 0,
+  "n_events": 8,
+  "runs": 1,
   "layers": {
     "outcome": {
       "time_to_triage": {
@@ -39,8 +39,8 @@
         ]
       },
       "autonomous_resolution_rate": {
-        "value": null,
-        "n": 0,
+        "value": 0.0,
+        "n": 1,
         "unit": "ratio",
         "assumptions": [
           "over all runs; merged as-is = github.pr_merged.diff_changed_since_agent == false"
@@ -49,8 +49,8 @@
     },
     "quality": {
       "reproduction_rate": {
-        "value": null,
-        "n": 0,
+        "value": 0.0,
+        "n": 1,
         "unit": "ratio",
         "assumptions": [
           "repro.result.failed_on_main == true, over runs"
@@ -117,16 +117,22 @@
     },
     "cost": {
       "cost_per_run": {
-        "value": null,
-        "n": 0,
+        "value": 0.060549,
+        "n": 1,
         "unit": "usd",
         "assumptions": [
           "mean of \u03a3 phase.end.cost_usd per run"
         ],
         "extra": {
-          "by_phase": {},
-          "by_model": {},
-          "per_run": {}
+          "by_phase": {
+            "wiki": 0.060549
+          },
+          "by_model": {
+            "claude-sonnet-5": 0.060549
+          },
+          "per_run": {
+            "rw-8-4fba64": 0.060549
+          }
         }
       },
       "cost_per_resolved_bug": {
@@ -138,8 +144,8 @@
         ]
       },
       "budget_kill_rate": {
-        "value": null,
-        "n": 0,
+        "value": 0.0,
+        "n": 1,
         "unit": "ratio",
         "assumptions": [
           "runs with budget.kill, over runs"
@@ -163,8 +169,8 @@
     },
     "trust": {
       "comments_per_issue": {
-        "value": null,
-        "n": 0,
+        "value": 0.0,
+        "n": 1,
         "unit": "comments",
         "assumptions": [
           "distinct agent comment ids per issue; in-place edits do not count"

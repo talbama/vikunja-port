@@ -1,4 +1,4 @@
-# Agent metrics — 0 runs, 0 events
+# Agent metrics — 1 runs, 8 events
 
 _Sources: `/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl`_
 
@@ -10,13 +10,13 @@ _Sources: `/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl`_
 | time_to_pr | null | 0 | run.start → github.pr_opened |
 | time_to_merge | null | 0 | run.start → github.pr_merged |
 | agent_vs_human_time | null | 0 | agent-active = Σ phase.end.duration_s; waiting = time_to_merge − active |
-| autonomous_resolution_rate | null | 0 | over all runs; merged as-is = github.pr_merged.diff_changed_since_agent == false |
+| autonomous_resolution_rate | 0.00 | 1 | over all runs; merged as-is = github.pr_merged.diff_changed_since_agent == false |
 
 ## Quality
 
 | metric | value | n | notes/assumptions |
 |---|---|---|---|
-| reproduction_rate | null | 0 | repro.result.failed_on_main == true, over runs |
+| reproduction_rate | 0.00 | 1 | repro.result.failed_on_main == true, over runs |
 | fix_rate | null | 0 | passes_after_fix == true, over reproduced runs |
 | merged_as_is_rate | null | 0 | merged as-is = github.pr_merged.diff_changed_since_agent == false, over merged PRs |
 | reopen_or_revert_rate | null | 0 | issue reopened or PR reverted within 14 days of merge, over merged PRs |
@@ -34,9 +34,9 @@ _Sources: `/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl`_
 
 | metric | value | n | notes/assumptions |
 |---|---|---|---|
-| cost_per_run | null | 0 | mean of Σ phase.end.cost_usd per run |
+| cost_per_run | 0.06 | 1 | mean of Σ phase.end.cost_usd per run |
 | cost_per_resolved_bug | null | 0 | total cost of all runs (including failures) / merged PRs |
-| budget_kill_rate | null | 0 | runs with budget.kill, over runs |
+| budget_kill_rate | 0.00 | 1 | runs with budget.kill, over runs |
 
 ## Learning
 
@@ -48,7 +48,7 @@ _Sources: `/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl`_
 
 | metric | value | n | notes/assumptions |
 |---|---|---|---|
-| comments_per_issue | null | 0 | distinct agent comment ids per issue; in-place edits do not count |
+| comments_per_issue | 0.00 | 1 | distinct agent comment ids per issue; in-place edits do not count |
 | reaction_score | null | 0 | (+1 − −1) / all reactions on agent triage comments |
 | zero_engagement_rate | null | 0 | agent comments with no reactions, over agent comments (replies are not collected in v1) |
 
@@ -75,7 +75,7 @@ Baseline is **historical**, computed from closed `bug` issues in `go-vikunja/vik
 quiet  suspend_auto_merge_on_revert: override_rate_loose > 0 (value=null, n=0, min_n=1)
 quiet  loosen_gate_on_override: override_rate_tight > 0.5 (value=null, n=0, min_n=20)
 quiet  shorten_triage_on_downvotes: reaction_score < -0.2 (value=null, n=0, min_n=10)
-quiet  budget_ceiling_wrong: budget_kill_rate > 0.2 (value=null, n=0, min_n=10)
+quiet  budget_ceiling_wrong: budget_kill_rate > 0.2 (value=0.00, n=1, min_n=10)
 ```
 
-_Generated 2026-09-17T14:11:00Z by run 35231852411._
+_Generated 2026-09-17T14:11:45Z by run 35231933951._
