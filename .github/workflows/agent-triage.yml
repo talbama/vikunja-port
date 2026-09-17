@@ -1,0 +1,97 @@
+name: agent-triage
+
+# Trigger: a bug issue is opened (or the `bug` label is added). The runner is the containment boundary:
+# an ephemeral VM with a repo-scoped GITHUB_TOKEN that cannot merge or force-push protected branches.
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: issue number
+        required: true
+      dry_run:
+        description: print GitHub writes instead of performing them
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: agent-issue-${{ github.event.issue.number || inputs.issue }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'opened' && contains(join(github.event.issue.labels.*.name, ','), 'bug')) ||
+      (github.event.action == 'labeled' && github.event.label.name == 'bug')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      ISSUE: ${{ github.event.issue.number || inputs.issue }}
+    steps:
+      - name: Check out the application (default branch, clean tree)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          path: app
+
+      - name: Check out the agent (private, read-only deploy key)
+        uses: actions/checkout@v4
+        with:
+          repository: talbama/agent-pipeline-port
+          ssh-key: ${{ secrets.AGENT_DEPLOY_KEY }}
+          path: agent
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: app/go.mod
+          cache-dependency-path: app/go.sum
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: app/frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: app/frontend/.nvmrc
+          cache: pnpm
+          cache-dependency-path: app/frontend/pnpm-lock.yaml
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: agent/uv.lock
+
+      - name: Install
+        run: |
+          cd app/frontend && pnpm install --frozen-lockfile
+          mkdir -p dist && [ -f dist/index.html ] || echo '<!doctype html>' > dist/index.html
+          cd ../../agent && uv sync --frozen
+          cd ../app && git status --porcelain && git config user.name "agent-pipeline" && git config user.email "agent-pipeline@users.noreply.github.com"
+
+      - name: Run the pipeline
+        working-directory: agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          AGENT_REPO_ROOT: ${{ github.workspace }}/app
+          AGENT_EVENTS_PATH: ${{ github.workspace }}/agent/metrics/events.jsonl
+          AGENT_RUN_BUDGET_USD: "3.00"
+        run: |
+          uv run python -m agent run --issue "$ISSUE" ${{ inputs.dry_run == true && '--dry-run' || '' }}
+
+      - name: Upload run artefacts (events, state)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-run-issue-${{ env.ISSUE }}
+          path: |
+            agent/metrics/events.jsonl
+            agent/runs/
+            agent/agent/memory/cases/
+          if-no-files-found: ignore
