@@ -24,7 +24,8 @@ import (
 // CanRead checks if the user can see an attachment
 func (ta *TaskAttachment) CanRead(s *xorm.Session, a web.Auth) (bool, int, error) {
 	t := &Task{ID: ta.TaskID}
-	return t.CanRead(s, a)
+	can, err := t.CanWrite(s, a)
+	return can, int(PermissionWrite), err
 }
 
 // CanDelete checks if the user can delete an attachment
