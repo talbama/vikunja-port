@@ -83,4 +83,4 @@ quiet  shorten_triage_on_downvotes: reaction_score < -0.2 (value=null, n=0, min_
 quiet  budget_ceiling_wrong: budget_kill_rate > 0.2 (value=0.00, n=1, min_n=10)
 ```
 
-_Generated 2026-09-18T05:09:04Z by run 35309661014._
+_Generated 2026-09-18T10:43:17Z by run 35336072053._
