@@ -2,7 +2,7 @@
   "events": [
     "/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl"
   ],
-  "n_events": 0,
+  "n_events": 15,
   "runs": 0,
   "layers": {
     "outcome": {
@@ -163,8 +163,8 @@
     },
     "trust": {
       "comments_per_issue": {
-        "value": null,
-        "n": 0,
+        "value": 0.0,
+        "n": 1,
         "unit": "comments",
         "assumptions": [
           "distinct agent comment ids per issue; in-place edits do not count"
@@ -187,14 +187,16 @@
         ]
       },
       "wiki_runs": {
-        "value": null,
-        "n": 0,
+        "value": {
+          "wiki_no_change": 1
+        },
+        "n": 1,
         "unit": "runs",
         "assumptions": [
           "wiki agent runs by exit; not part of any bug-pipeline rate"
         ],
         "extra": {
-          "cost_usd": 0.0
+          "cost_usd": 0.087706
         }
       }
     },

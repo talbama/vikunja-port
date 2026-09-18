@@ -1,4 +1,4 @@
-# Agent metrics — 0 runs, 0 events
+# Agent metrics — 0 runs, 15 events
 
 _Sources: `/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl`_
 
@@ -48,10 +48,10 @@ _Sources: `/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl`_
 
 | metric | value | n | notes/assumptions |
 |---|---|---|---|
-| comments_per_issue | null | 0 | distinct agent comment ids per issue; in-place edits do not count |
+| comments_per_issue | 0.00 | 1 | distinct agent comment ids per issue; in-place edits do not count |
 | reaction_score | null | 0 | (+1 − −1) / all reactions on agent triage comments |
 | zero_engagement_rate | null | 0 | agent comments with no reactions, over agent comments (replies are not collected in v1) |
-| wiki_runs | null | 0 | wiki agent runs by exit; not part of any bug-pipeline rate |
+| wiki_runs | wiki_no_change=1 | 1 | wiki agent runs by exit; not part of any bug-pipeline rate |
 
 ## Estimate
 
@@ -79,4 +79,4 @@ quiet  shorten_triage_on_downvotes: reaction_score < -0.2 (value=null, n=0, min_
 quiet  budget_ceiling_wrong: budget_kill_rate > 0.2 (value=null, n=0, min_n=10)
 ```
 
-_Generated 2026-09-18T05:05:02Z by run 35309402501._
+_Generated 2026-09-18T05:06:21Z by run 35309478014._
