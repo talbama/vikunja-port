@@ -1,4 +1,4 @@
-# Agent metrics — 0 runs, 15 events
+# Agent metrics — 1 runs, 78 events
 
 _Sources: `/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl`_
 
@@ -6,18 +6,18 @@ _Sources: `/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl`_
 
 | metric | value | n | notes/assumptions |
 |---|---|---|---|
-| time_to_triage | null | 0 | run.start → first triage comment |
-| time_to_pr | null | 0 | run.start → github.pr_opened |
+| time_to_triage | median=40.96, p75=40.96 | 1 | run.start → first triage comment |
+| time_to_pr | median=441.57, p75=441.57 | 1 | run.start → github.pr_opened |
 | time_to_merge | null | 0 | run.start → github.pr_merged |
 | agent_vs_human_time | null | 0 | agent-active = Σ phase.end.duration_s; waiting = time_to_merge − active |
-| autonomous_resolution_rate | null | 0 | over all runs; merged as-is = github.pr_merged.diff_changed_since_agent == false |
+| autonomous_resolution_rate | 0.00 | 1 | over all runs; merged as-is = github.pr_merged.diff_changed_since_agent == false |
 
 ## Quality
 
 | metric | value | n | notes/assumptions |
 |---|---|---|---|
-| reproduction_rate | null | 0 | repro.result.failed_on_main == true, over runs |
-| fix_rate | null | 0 | passes_after_fix == true, over reproduced runs |
+| reproduction_rate | 1.00 | 1 | repro.result.failed_on_main == true, over runs |
+| fix_rate | 1.00 | 1 | passes_after_fix == true, over reproduced runs |
 | merged_as_is_rate | null | 0 | merged as-is = github.pr_merged.diff_changed_since_agent == false, over merged PRs |
 | reopen_or_revert_rate | null | 0 | issue reopened or PR reverted within 14 days of merge, over merged PRs |
 
@@ -27,30 +27,34 @@ _Sources: `/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl`_
 |---|---|---|---|
 | severity_agreement | null | 0 | over runs with a human severity override; null when n = 0, never 100% |
 | routing_accuracy | null | 0 | routing.assigned.owner == github.assignee_final.assignee |
-| override_rate_tight | null | 0 | escalated PRs merged as-is, over escalated PRs (high value = gate too tight) |
+| override_rate_tight | 0.00 | 1 | escalated PRs merged as-is, over escalated PRs (high value = gate too tight) |
 | override_rate_loose | null | 0 | auto_merge PRs later reverted, over auto-merged PRs (any value > 0 = gate too loose) |
 
 ## Cost
 
 | metric | value | n | notes/assumptions |
 |---|---|---|---|
-| cost_per_run | null | 0 | mean of Σ phase.end.cost_usd per run |
+| cost_per_run | 0.38 | 1 | mean of Σ phase.end.cost_usd per run |
 | cost_per_resolved_bug | null | 0 | total cost of all runs (including failures) / merged PRs |
-| budget_kill_rate | null | 0 | runs with budget.kill, over runs |
+| budget_kill_rate | 0.00 | 1 | runs with budget.kill, over runs |
 
 ## Learning
 
 | metric | value | n | notes/assumptions |
 |---|---|---|---|
-| memory_effect | null | 0 | per-run triage cost alongside cases_retrieved and repo_map_version; deltas are vs the first run; a negative token delta is consistent with, not proof of, memory helping; n < 5: table only, no summary statistic |
+| memory_effect | null | 1 | per-run triage cost alongside cases_retrieved and repo_map_version; deltas are vs the first run; a negative token delta is consistent with, not proof of, memory helping; n < 5: table only, no summary statistic |
+
+| run | when | cases | map | triage tool calls | triage input tokens | triage s | Δ tokens | Δ s |
+|---|---|---|---|---|---|---|---|---|
+| r-4-1b9a6e | 2026-09-18 | 0 | f47171bd | 13 | 82 | 38.9 | +0 | +0.0 |
 
 ## Trust
 
 | metric | value | n | notes/assumptions |
 |---|---|---|---|
-| comments_per_issue | 0.00 | 1 | distinct agent comment ids per issue; in-place edits do not count |
+| comments_per_issue | 0.50 | 2 | distinct agent comment ids per issue; in-place edits do not count |
 | reaction_score | null | 0 | (+1 − −1) / all reactions on agent triage comments |
-| zero_engagement_rate | null | 0 | agent comments with no reactions, over agent comments (replies are not collected in v1) |
+| zero_engagement_rate | 1.00 | 1 | agent comments with no reactions, over agent comments (replies are not collected in v1) |
 | wiki_runs | wiki_no_change=1 | 1 | wiki agent runs by exit; not part of any bug-pipeline rate |
 
 ## Estimate
@@ -65,7 +69,7 @@ Baseline is **historical**, computed from closed `bug` issues in `go-vikunja/vik
 
 | metric | agent (median) | human baseline (median) | n agent |
 |---|---|---|---|
-| time_to_triage | null | 20.0 h | 0 |
+| time_to_triage | 1 min | 20.0 h | 1 |
 | time_to_merge (MTTR) | null | 12.1 d | 0 |
 | reopen_or_revert_rate (14d) | null | 0.00 | 0 |
 
@@ -74,9 +78,9 @@ Baseline is **historical**, computed from closed `bug` issues in `go-vikunja/vik
 
 ```
 quiet  suspend_auto_merge_on_revert: override_rate_loose > 0 (value=null, n=0, min_n=1)
-quiet  loosen_gate_on_override: override_rate_tight > 0.5 (value=null, n=0, min_n=20)
+quiet  loosen_gate_on_override: override_rate_tight > 0.5 (value=0.00, n=1, min_n=20)
 quiet  shorten_triage_on_downvotes: reaction_score < -0.2 (value=null, n=0, min_n=10)
-quiet  budget_ceiling_wrong: budget_kill_rate > 0.2 (value=null, n=0, min_n=10)
+quiet  budget_ceiling_wrong: budget_kill_rate > 0.2 (value=0.00, n=1, min_n=10)
 ```
 
-_Generated 2026-09-18T05:06:21Z by run 35309478014._
+_Generated 2026-09-18T05:09:04Z by run 35309661014._

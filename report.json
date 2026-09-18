@@ -2,21 +2,27 @@
   "events": [
     "/home/runner/work/vikunja-port/vikunja-port/mb/merged.jsonl"
   ],
-  "n_events": 15,
-  "runs": 0,
+  "n_events": 78,
+  "runs": 1,
   "layers": {
     "outcome": {
       "time_to_triage": {
-        "value": null,
-        "n": 0,
+        "value": {
+          "median": 40.96000003814697,
+          "p75": 40.96000003814697
+        },
+        "n": 1,
         "unit": "seconds",
         "assumptions": [
           "run.start \u2192 first triage comment"
         ]
       },
       "time_to_pr": {
-        "value": null,
-        "n": 0,
+        "value": {
+          "median": 441.56500005722046,
+          "p75": 441.56500005722046
+        },
+        "n": 1,
         "unit": "seconds",
         "assumptions": [
           "run.start \u2192 github.pr_opened"
@@ -39,8 +45,8 @@
         ]
       },
       "autonomous_resolution_rate": {
-        "value": null,
-        "n": 0,
+        "value": 0.0,
+        "n": 1,
         "unit": "ratio",
         "assumptions": [
           "over all runs; merged as-is = github.pr_merged.diff_changed_since_agent == false"
@@ -49,16 +55,16 @@
     },
     "quality": {
       "reproduction_rate": {
-        "value": null,
-        "n": 0,
+        "value": 1.0,
+        "n": 1,
         "unit": "ratio",
         "assumptions": [
           "repro.result.failed_on_main == true, over runs"
         ]
       },
       "fix_rate": {
-        "value": null,
-        "n": 0,
+        "value": 1.0,
+        "n": 1,
         "unit": "ratio",
         "assumptions": [
           "passes_after_fix == true, over reproduced runs"
@@ -99,8 +105,8 @@
         ]
       },
       "override_rate_tight": {
-        "value": null,
-        "n": 0,
+        "value": 0.0,
+        "n": 1,
         "unit": "ratio",
         "assumptions": [
           "escalated PRs merged as-is, over escalated PRs (high value = gate too tight)"
@@ -117,16 +123,27 @@
     },
     "cost": {
       "cost_per_run": {
-        "value": null,
-        "n": 0,
+        "value": 0.37975400000000004,
+        "n": 1,
         "unit": "usd",
         "assumptions": [
           "mean of \u03a3 phase.end.cost_usd per run"
         ],
         "extra": {
-          "by_phase": {},
-          "by_model": {},
-          "per_run": {}
+          "by_phase": {
+            "triage": 0.076506,
+            "reproduce": 0.17072,
+            "root_cause": 0.039017,
+            "fix": 0.063823,
+            "pr": 0.029688
+          },
+          "by_model": {
+            "claude-haiku-4-5-20251001": 0.10619400000000001,
+            "claude-sonnet-5": 0.27356
+          },
+          "per_run": {
+            "r-4-1b9a6e": 0.37975400000000004
+          }
         }
       },
       "cost_per_resolved_bug": {
@@ -138,8 +155,8 @@
         ]
       },
       "budget_kill_rate": {
-        "value": null,
-        "n": 0,
+        "value": 0.0,
+        "n": 1,
         "unit": "ratio",
         "assumptions": [
           "runs with budget.kill, over runs"
@@ -149,7 +166,7 @@
     "learning": {
       "memory_effect": {
         "value": null,
-        "n": 0,
+        "n": 1,
         "unit": "table",
         "assumptions": [
           "per-run triage cost alongside cases_retrieved and repo_map_version; deltas are vs the first run",
@@ -157,14 +174,27 @@
           "n < 5: table only, no summary statistic"
         ],
         "extra": {
-          "rows": []
+          "rows": [
+            {
+              "run_id": "r-4-1b9a6e",
+              "ts": "2026-09-18T05:01:16.375Z",
+              "cases_retrieved": 0,
+              "repo_map_version": "f47171bd",
+              "triage_tool_calls": 13,
+              "triage_input_tokens": 82,
+              "triage_duration_s": 38.9,
+              "delta_tool_calls": 0,
+              "delta_input_tokens": 0,
+              "delta_duration_s": 0.0
+            }
+          ]
         }
       }
     },
     "trust": {
       "comments_per_issue": {
-        "value": 0.0,
-        "n": 1,
+        "value": 0.5,
+        "n": 2,
         "unit": "comments",
         "assumptions": [
           "distinct agent comment ids per issue; in-place edits do not count"
@@ -179,8 +209,8 @@
         ]
       },
       "zero_engagement_rate": {
-        "value": null,
-        "n": 0,
+        "value": 1.0,
+        "n": 1,
         "unit": "ratio",
         "assumptions": [
           "agent comments with no reactions, over agent comments (replies are not collected in v1)"
